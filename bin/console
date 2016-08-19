@@ -1,0 +1,7 @@
+#!/usr/bin/env ruby
+
+require "bundler/setup"
+require "sidekiq/cloudwatch"
+
+require "irb"
+IRB.start
