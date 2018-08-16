@@ -7,6 +7,8 @@ useful for autoscaling and keeping an eye on your queues.
 
 Optimised for Sidekiq Enterprise with leader election, but works everywhere!
 
+<img width="1055" alt="Screenshot of Sidekiq metrics in a CloudWatch dashboard" src="https://user-images.githubusercontent.com/14028/44190767-9fd66280-a16b-11e8-8b12-3d5e0641c15f.png">
+
 ## Installation
 
 Add this gem to your application’s Gemfile near sidekiq and then run `bundle install`:
