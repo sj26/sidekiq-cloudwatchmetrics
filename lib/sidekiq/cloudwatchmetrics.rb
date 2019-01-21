@@ -75,8 +75,6 @@ module Sidekiq::CloudWatchMetrics
       now = Time.now
       stats = Sidekiq::Stats.new
       processes = Sidekiq::ProcessSet.new.to_enum(:each).to_a
-      utilization = calculate_utilization(processes)
-      capacity = calculate_capacity(processes)
       queues = stats.queues
 
       metrics = [
@@ -129,26 +127,36 @@ module Sidekiq::CloudWatchMetrics
           unit: "Count",
         },
         {
-          metric_name: "Capacity",
-          timestamp: now,
-          value: capacity,
-          unit: "Count",
-        },
-        {
-          metric_name: "Utilization",
-          timestamp: now,
-          value: utilization * 100.0,
-          unit: "Percent",
-        },
-        {
           metric_name: "DefaultQueueLatency",
           timestamp: now,
           value: stats.default_queue_latency,
           unit: "Seconds",
         },
+        {
+          metric_name: "Capacity",
+          timestamp: now,
+          value: calculate_capacity(processes),
+          unit: "Count",
+        },
+        {
+          metric_name: "Utilization",
+          timestamp: now,
+          value: calculate_utilization(processes) * 100.0,
+          unit: "Percent",
+        },
       ]
 
-      queues.map do |(queue_name, queue_size)|
+      processes.each do |process|
+        metrics << {
+          metric_name: "Utilization",
+          dimensions: [{name: "Hostname", value: process["hostname"]}],
+          timestamp: now,
+          value: process["busy"] / process["concurrency"].to_f * 100.0,
+          unit: "Percent",
+        }
+      end
+
+      queues.each do |(queue_name, queue_size)|
         metrics << {
           metric_name: "QueueSize",
           dimensions: [{name: "QueueName", value: queue_name}],
