@@ -62,8 +62,8 @@ RSpec.describe Sidekiq::CloudWatchMetrics do
           )
           allow(Sidekiq::Stats).to receive(:new).and_return(stats)
           processes = [
-            Sidekiq::Process.new("busy" => 5, "concurrency" => 10),
-            Sidekiq::Process.new("busy" => 2, "concurrency" => 20),
+            Sidekiq::Process.new("busy" => 5, "concurrency" => 10, "hostname" => "foo"),
+            Sidekiq::Process.new("busy" => 2, "concurrency" => 20, "hostname" => "bar"),
           ]
           allow(Sidekiq::ProcessSet).to receive(:new).and_return(processes)
           allow(Sidekiq::Queue).to receive(:new).with(/foo|bar|baz/).and_return(double(latency: 1.23))
@@ -138,6 +138,20 @@ RSpec.describe Sidekiq::CloudWatchMetrics do
                 timestamp: now,
                 value: stats.default_queue_latency,
                 unit: "Seconds",
+              },
+              {
+                metric_name: "Utilization",
+                dimensions: [{name: "Hostname", value: "foo"}],
+                timestamp: now,
+                unit: "Percent",
+                value: 50.0,
+              },
+              {
+                metric_name: "Utilization",
+                dimensions: [{name: "Hostname", value: "bar"}],
+                timestamp: now,
+                unit: "Percent",
+                value: 10.0,
               },
               {
                 metric_name: "QueueSize",
