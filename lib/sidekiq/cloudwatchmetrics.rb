@@ -38,8 +38,9 @@ module Sidekiq::CloudWatchMetrics
 
     INTERVAL = 60 # seconds
 
-    def initialize(client: Aws::CloudWatch::Client.new)
+    def initialize(client: Aws::CloudWatch::Client.new, additional_dimensions: {})
       @client = client
+      @additional_dimensions = additional_dimensions.map { |k, v| {name: k.to_s, value: v.to_s} }
     end
 
     def start
@@ -174,6 +175,12 @@ module Sidekiq::CloudWatchMetrics
           value: queue_latency,
           unit: "Seconds",
         }
+      end
+
+      unless @additional_dimensions.empty?
+        metrics = metrics.each do |metric|
+          metric[:dimensions] = (metric[:dimensions] || []) + @additional_dimensions
+        end
       end
 
       # We can only put 20 metrics at a time
