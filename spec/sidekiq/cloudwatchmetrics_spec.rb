@@ -417,5 +417,17 @@ RSpec.describe Sidekiq::CloudWatchMetrics do
         end
       end
     end
+
+    describe "#stop" do
+      it "doesn't raise ThreadError" do
+        thread = double("thread", wakeup: true, join: true)
+        allow(thread).to receive(:wakeup).and_raise(ThreadError)
+        publisher.instance_variable_set("@thread", thread)
+
+        expect do
+          publisher.stop
+        end.not_to raise_error
+      end
+    end
   end
 end

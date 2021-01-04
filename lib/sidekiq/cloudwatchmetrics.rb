@@ -216,6 +216,9 @@ module Sidekiq::CloudWatchMetrics
       @stop = true
       @thread.wakeup
       @thread.join
+    rescue ThreadError
+      # Don't raise if thread is already dead.
+      nil
     end
   end
 end
