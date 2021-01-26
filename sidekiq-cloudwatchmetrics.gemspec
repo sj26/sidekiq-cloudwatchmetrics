@@ -17,12 +17,13 @@ Gem::Specification.new do |spec|
 
   spec.files         = Dir["README.md", "LICENSE", "lib/**/*.rb"]
 
-  spec.required_ruby_version = "~> 3.0"
+  spec.required_ruby_version = ">= 2.4"
 
-  spec.add_runtime_dependency "sidekiq", "~> 5.0"
+  spec.add_runtime_dependency "sidekiq", ">= 5.0", "< 6.2"
   spec.add_runtime_dependency "aws-sdk-cloudwatch", "~> 1.6"
+  spec.add_runtime_dependency "nokogiri", "~> 1.11"
 
-  spec.add_development_dependency "bundler", "~> 2.2"
+  spec.add_development_dependency "bundler", ">= 1.16", "~> 2.2"
   spec.add_development_dependency "rake", "~> 12.3"
   spec.add_development_dependency "rspec", "~> 3.7"
   spec.add_development_dependency "timecop", "~> 0.9"
