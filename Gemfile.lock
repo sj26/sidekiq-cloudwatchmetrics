@@ -4,7 +4,7 @@ PATH
     sidekiq-cloudwatchmetrics (1.2.0)
       aws-sdk-cloudwatch (~> 1.6)
       nokogiri (~> 1.11)
-      sidekiq (>= 5.0, < 6.2)
+      sidekiq (~> 6.1, >= 5.0)
 
 GEM
   remote: https://rubygems.org/
@@ -51,6 +51,7 @@ GEM
 
 PLATFORMS
   x86_64-darwin-20
+  x86_64-linux
 
 DEPENDENCIES
   bundler (~> 2.2, >= 1.16)
