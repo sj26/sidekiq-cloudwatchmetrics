@@ -52,11 +52,11 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
-  bundler (~> 1.16)
+  bundler (~> 2.2)
   rake (~> 12.3)
   rspec (~> 3.7)
   sidekiq-cloudwatchmetrics!
   timecop (~> 0.9)
 
 BUNDLED WITH
-   1.17.3
+   2.2.3
