@@ -22,8 +22,9 @@ Gem::Specification.new do |spec|
   spec.add_runtime_dependency "sidekiq", ">= 5.0", "< 7.0"
   spec.add_runtime_dependency "aws-sdk-cloudwatch", "~> 1.6"
 
-  spec.add_development_dependency "bundler", "~> 1.16"
+  spec.add_development_dependency "bundler", "~> 2.2"
   spec.add_development_dependency "rake", "~> 12.3"
   spec.add_development_dependency "rspec", "~> 3.7"
   spec.add_development_dependency "timecop", "~> 0.9"
+  spec.add_development_dependency "rexml", "~> 3.2"
 end

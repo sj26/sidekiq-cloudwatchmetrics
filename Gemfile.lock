@@ -26,6 +26,7 @@ GEM
     rack (2.2.3)
     rake (12.3.3)
     redis (4.2.5)
+    rexml (3.2.4)
     rspec (3.7.0)
       rspec-core (~> 3.7.0)
       rspec-expectations (~> 3.7.0)
@@ -49,11 +50,12 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
-  bundler (~> 1.16)
+  bundler (~> 2.2)
   rake (~> 12.3)
+  rexml (~> 3.2)
   rspec (~> 3.7)
   sidekiq-cloudwatchmetrics!
   timecop (~> 0.9)
 
 BUNDLED WITH
-   1.17.3
+   2.2.6
