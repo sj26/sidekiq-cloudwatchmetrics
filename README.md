@@ -40,6 +40,13 @@ Sidekiq::CloudWatchMetrics.enable!(client: AWS::CloudWatch::Client.new)
 
   [cwclient]: https://docs.aws.amazon.com/sdk-for-ruby/v3/api/Aws/CloudWatch/Client.html
 
+The default namespace for metrics is "Sidekiq". You can configure this with the `namespace` option:
+
+```ruby
+Sidekiq::CloudWatchMetrics.enable!(client: AWS::CloudWatch::Client.new, namespace: "Sidekiq-Staging")
+```
+
+
 ## Development
 
 After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake spec` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
