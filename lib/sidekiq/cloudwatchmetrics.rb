@@ -217,6 +217,8 @@ module Sidekiq::CloudWatchMetrics
 
     # Returns busy / concurrency averaged across processes (for scaling)
     private def calculate_utilization(processes)
+      return 0.0 if processes.empty?
+
       processes.map do |process|
         process["busy"] / process["concurrency"].to_f
       end.sum / processes.size.to_f
