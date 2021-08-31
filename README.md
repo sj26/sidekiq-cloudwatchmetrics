@@ -35,7 +35,7 @@ through environment variables that aws-sdk expects. You can also explicitly
 supply an [aws-sdk CloudWatch Client instance][cwclient]:
 
 ```ruby
-Sidekiq::CloudWatchMetrics.enable!(client: AWS::CloudWatch::Client.new)
+Sidekiq::CloudWatchMetrics.enable!(client: Aws::CloudWatch::Client.new)
 ```
 
   [cwclient]: https://docs.aws.amazon.com/sdk-for-ruby/v3/api/Aws/CloudWatch/Client.html
@@ -43,7 +43,7 @@ Sidekiq::CloudWatchMetrics.enable!(client: AWS::CloudWatch::Client.new)
 The default namespace for metrics is "Sidekiq". You can configure this with the `namespace` option:
 
 ```ruby
-Sidekiq::CloudWatchMetrics.enable!(client: AWS::CloudWatch::Client.new, namespace: "Sidekiq-Staging")
+Sidekiq::CloudWatchMetrics.enable!(client: Aws::CloudWatch::Client.new, namespace: "Sidekiq-Staging")
 ```
 
 
