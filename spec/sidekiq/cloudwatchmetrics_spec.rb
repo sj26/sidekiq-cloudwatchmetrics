@@ -62,8 +62,8 @@ RSpec.describe Sidekiq::CloudWatchMetrics do
           )
           allow(Sidekiq::Stats).to receive(:new).and_return(stats)
           processes = [
-            Sidekiq::Process.new("busy" => 5, "concurrency" => 10, "hostname" => "foo"),
-            Sidekiq::Process.new("busy" => 2, "concurrency" => 20, "hostname" => "bar"),
+            Sidekiq::Process.new("busy" => 5, "concurrency" => 10, "hostname" => "foo", "tag" => "sidekiq-high"),
+            Sidekiq::Process.new("busy" => 2, "concurrency" => 20, "hostname" => "bar", "tag" => "sidekiq-low"),
           ]
           allow(Sidekiq::ProcessSet).to receive(:new).and_return(processes)
           allow(Sidekiq::Queue).to receive(:new).with(/foo|bar|baz/).and_return(double(latency: 1.23))
@@ -145,7 +145,13 @@ RSpec.describe Sidekiq::CloudWatchMetrics do
                 unit: "Percent",
                 value: 50.0,
               },
-              {},
+              {
+                metric_name: "Utilization",
+                dimensions: [{name: "Tag", value: "sidekiq-high"}],
+                timestamp: now,
+                unit: "Percent",
+                value: 50.0,
+              },
               {
                 metric_name: "Utilization",
                 dimensions: [{name: "Hostname", value: "bar"}],
@@ -153,7 +159,13 @@ RSpec.describe Sidekiq::CloudWatchMetrics do
                 unit: "Percent",
                 value: 10.0,
               },
-              {},
+              {
+                metric_name: "Utilization",
+                dimensions: [{name: "Tag", value: "sidekiq-low"}],
+                timestamp: now,
+                unit: "Percent",
+                value: 10.0,
+              },
               {
                 metric_name: "QueueSize",
                 dimensions: [{name: "QueueName", value: "foo"}],
@@ -235,8 +247,8 @@ RSpec.describe Sidekiq::CloudWatchMetrics do
           )
           allow(Sidekiq::Stats).to receive(:new).and_return(stats)
           processes = [
-            Sidekiq::Process.new("busy" => 5, "concurrency" => 10, "hostname" => "foo"),
-            Sidekiq::Process.new("busy" => 2, "concurrency" => 20, "hostname" => "bar"),
+            Sidekiq::Process.new("busy" => 5, "concurrency" => 10, "hostname" => "foo", "tag" => "sidekiq-high"),
+            Sidekiq::Process.new("busy" => 2, "concurrency" => 20, "hostname" => "bar", "tag" => "sidekiq-low"),
           ]
           allow(Sidekiq::ProcessSet).to receive(:new).and_return(processes)
           allow(Sidekiq::Queue).to receive(:new).with(/foo|bar|baz/).and_return(double(latency: 1.23))
@@ -345,9 +357,13 @@ RSpec.describe Sidekiq::CloudWatchMetrics do
                 value: 50.0,
               },
               {
-                dimensions: [
-                  {name: "appCluster", value: "1"},
-                  {name: "type", value: "foo"}],
+                metric_name: "Utilization",
+                dimensions: [{name: "Tag", value: "sidekiq-high"},
+                             {name: "appCluster", value: "1"},
+                             {name: "type", value: "foo"}],
+                timestamp: now,
+                unit: "Percent",
+                value: 50.0,
               },
               {
                 metric_name: "Utilization",
@@ -359,9 +375,13 @@ RSpec.describe Sidekiq::CloudWatchMetrics do
                 value: 10.0,
               },
               {
-                dimensions: [
-                  {name: "appCluster", value: "1"},
-                  {name: "type", value: "foo"}],
+                metric_name: "Utilization",
+                dimensions: [{name: "Tag", value: "sidekiq-low"},
+                             {name: "appCluster", value: "1"},
+                             {name: "type", value: "foo"}],
+                timestamp: now,
+                unit: "Percent",
+                value: 10.0,
               },
               {
                 metric_name: "QueueSize",
