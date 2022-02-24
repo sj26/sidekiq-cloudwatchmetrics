@@ -156,6 +156,14 @@ module Sidekiq::CloudWatchMetrics
           value: process["busy"] / process["concurrency"].to_f * 100.0,
           unit: "Percent",
         }
+
+        metrics << {
+          metric_name: "Utilization",
+          dimensions: [{name: "Tag", value: process["tag"]}],
+          timestamp: now,
+          value: process["busy"] / process["concurrency"].to_f * 100.0,
+          unit: "Percent",
+        }
       end
 
       queues.each do |(queue_name, queue_size)|
@@ -183,7 +191,6 @@ module Sidekiq::CloudWatchMetrics
           metric[:dimensions] = (metric[:dimensions] || []) + @additional_dimensions
         end
       end
-
       # We can only put 20 metrics at a time
       metrics.each_slice(20) do |some_metrics|
         @client.put_metric_data(
