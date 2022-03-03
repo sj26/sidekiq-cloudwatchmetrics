@@ -43,14 +43,20 @@ module Sidekiq::CloudWatchMetrics
       include Sidekiq::Component
     end
 
+    DEFAULT_PROCESS_DIMENSIONS = {
+      hostname: true,
+      tag: true,
+    }
+
     INTERVAL = 60 # seconds
 
-    def initialize(config: Sidekiq, client: Aws::CloudWatch::Client.new, namespace: "Sidekiq", additional_dimensions: {})
+    def initialize(config: Sidekiq, client: Aws::CloudWatch::Client.new, namespace: "Sidekiq", process_dimensions: {}, additional_dimensions: {})
       # Sidekiq 6.5+ requires @config, which defaults to the top-level
       # `Sidekiq` module, but can be overridden when running multiple Sidekiqs.
       @config = config
       @client = client
       @namespace = namespace
+      @process_dimensions = DEFAULT_PROCESS_DIMENSIONS.merge(process_dimensions)
       @additional_dimensions = additional_dimensions.map { |k, v| {name: k.to_s, value: v.to_s} }
     end
 
@@ -159,21 +165,25 @@ module Sidekiq::CloudWatchMetrics
       ]
 
       processes.each do |process|
-        metrics << {
-          metric_name: "Utilization",
-          dimensions: [{name: "Hostname", value: process["hostname"]}],
-          timestamp: now,
-          value: process["busy"] / process["concurrency"].to_f * 100.0,
-          unit: "Percent",
-        }
+        if @process_dimensions[:hostname]
+          metrics << {
+            metric_name: "Utilization",
+            dimensions: [{name: "Hostname", value: process["hostname"]}],
+            timestamp: now,
+            value: process["busy"] / process["concurrency"].to_f * 100.0,
+            unit: "Percent",
+          }
+        end
 
-        metrics << {
-          metric_name: "Utilization",
-          dimensions: [{name: "Tag", value: process["tag"]}],
-          timestamp: now,
-          value: process["busy"] / process["concurrency"].to_f * 100.0,
-          unit: "Percent",
-        }
+        if @process_dimensions[:tag]
+          metrics << {
+            metric_name: "Utilization",
+            dimensions: [{name: "Tag", value: process["tag"]}],
+            timestamp: now,
+            value: process["busy"] / process["concurrency"].to_f * 100.0,
+            unit: "Percent",
+          }
+        end
       end
 
       queues.each do |(queue_name, queue_size)|
