@@ -204,7 +204,7 @@ module Sidekiq::CloudWatchMetrics
     private def calculate_capacity(processes)
       processes.map do |process|
         process["concurrency"]
-      end.sum
+      end.sum.to_f
     end
 
     # Returns busy / concurrency averaged across processes (for scaling)
