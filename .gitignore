@@ -3,3 +3,5 @@
 /pkg/
 /spec/reports/
 /tmp/
+/.idea/
+/vendor/
