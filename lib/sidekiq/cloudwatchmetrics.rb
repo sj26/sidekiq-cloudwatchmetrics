@@ -153,7 +153,7 @@ module Sidekiq::CloudWatchMetrics
           metric_name: "Utilization",
           dimensions: [{name: "Hostname", value: process["hostname"]}],
           timestamp: now,
-          value: process["busy"] / process["concurrency"].to_f * 100.0,
+          value: to_factor(process["busy"], process["concurrency"]) * 100.0,
           unit: "Percent",
         }
 
@@ -161,7 +161,7 @@ module Sidekiq::CloudWatchMetrics
           metric_name: "Utilization",
           dimensions: [{name: "Tag", value: process["tag"]}],
           timestamp: now,
-          value: process["busy"] / process["concurrency"].to_f * 100.0,
+          value: to_factor(process["busy"], process["concurrency"]) * 100.0,
           unit: "Percent",
         }
       end
@@ -213,8 +213,14 @@ module Sidekiq::CloudWatchMetrics
       return 0.0 if processes.size.zero?
 
       processes.map do |process|
-        process["busy"] / process["concurrency"].to_f
+        to_factor(process["busy"], process["concurrency"])
       end.sum / processes.size.to_f
+    end
+
+    private def to_factor(inp1, inp2)
+      return 0.0 if inp2.zero?
+
+      inp1 / inp2.to_f
     end
 
     def quiet
