@@ -2,11 +2,14 @@ require "spec_helper"
 
 RSpec.describe Sidekiq::CloudWatchMetrics do
   describe ".enable!" do
+    let(:options_deprecated) { Gem::Version.new(Sidekiq::VERSION) >= Gem::Version.new('6.5.0') }
+    let(:config) { options_deprecated ? Sidekiq : Sidekiq.options }
+
     # Sidekiq.options does a Sidekiq::DEFAULTS.dup which retains the same values, so
     # Sidekiq.options[:lifecycle_events] IS Sidekiq::DEFAULTS[:lifecycle_events] and
     # is mutable, so Sidekiq.options = nil will again Sidekiq::DEFAULTS.dup and get
     # the same Sidekiq::DEFAULTS[:lifecycle_events]. So we have to manually clear it.
-    before { Sidekiq.options[:lifecycle_events].each_value(&:clear) }
+    before { config[:lifecycle_events].each_value(&:clear) }
 
     context "in a sidekiq server" do
       before { allow(Sidekiq).to receive(:server?).and_return(true) }
@@ -18,9 +21,9 @@ RSpec.describe Sidekiq::CloudWatchMetrics do
         Sidekiq::CloudWatchMetrics.enable!
 
         # Look, this is hard.
-        expect(Sidekiq.options[:lifecycle_events][:startup]).not_to be_empty
-        expect(Sidekiq.options[:lifecycle_events][:quiet]).not_to be_empty
-        expect(Sidekiq.options[:lifecycle_events][:shutdown]).not_to be_empty
+        expect(config[:lifecycle_events][:startup]).not_to be_empty
+        expect(config[:lifecycle_events][:quiet]).not_to be_empty
+        expect(config[:lifecycle_events][:shutdown]).not_to be_empty
       end
     end
 
@@ -32,9 +35,9 @@ RSpec.describe Sidekiq::CloudWatchMetrics do
 
         Sidekiq::CloudWatchMetrics.enable!
 
-        expect(Sidekiq.options[:lifecycle_events][:startup]).to be_empty
-        expect(Sidekiq.options[:lifecycle_events][:quiet]).to be_empty
-        expect(Sidekiq.options[:lifecycle_events][:shutdown]).to be_empty
+        expect(config[:lifecycle_events][:startup]).to be_empty
+        expect(config[:lifecycle_events][:quiet]).to be_empty
+        expect(config[:lifecycle_events][:shutdown]).to be_empty
       end
     end
   end
