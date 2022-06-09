@@ -2,11 +2,13 @@
 
 require "sidekiq"
 require "sidekiq/api"
-require "sidekiq/util"
 
 require "aws-sdk-cloudwatch"
 
 module Sidekiq::CloudWatchMetrics
+  SIDEKIQ_GTE_6_5_0 = Gem::Version.new(Sidekiq::VERSION) >= Gem::Version.new('6.5.0')
+  SIDEKIQ_GTE_6_5_0 ? (require "sidekiq/component") : (require "sidekiq/util")
+
   def self.enable!(**kwargs)
     Sidekiq.configure_server do |config|
       publisher = Publisher.new(**kwargs)
@@ -34,7 +36,7 @@ module Sidekiq::CloudWatchMetrics
   end
 
   class Publisher
-    include Sidekiq::Util
+    SIDEKIQ_GTE_6_5_0 ? (include Sidekiq::Component) : (include Sidekiq::Util)
 
     INTERVAL = 60 # seconds
 
