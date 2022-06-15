@@ -2,7 +2,7 @@
 
 require "sidekiq"
 require "sidekiq/api"
-require "sidekiq/util"
+require "sidekiq/manager"
 
 require "aws-sdk-cloudwatch"
 
@@ -34,7 +34,7 @@ module Sidekiq::CloudWatchMetrics
   end
 
   class Publisher
-    include Sidekiq::Util
+    include Sidekiq::Component
 
     INTERVAL = 60 # seconds
 
@@ -45,7 +45,7 @@ module Sidekiq::CloudWatchMetrics
     end
 
     def start
-      logger.info { "Starting Sidekiq CloudWatch Metrics Publisher" }
+      Sidekiq.logger.info { "Starting Sidekiq CloudWatch Metrics Publisher" }
 
       @done = false
       @thread = safe_thread("cloudwatch metrics publisher", &method(:run))
@@ -56,13 +56,13 @@ module Sidekiq::CloudWatchMetrics
     end
 
     def run
-      logger.info { "Started Sidekiq CloudWatch Metrics Publisher" }
+      Sidekiq.logger.info { "Started Sidekiq CloudWatch Metrics Publisher" }
 
       # Publish stats every INTERVAL seconds, sleeping as required between runs
       now = Time.now.to_f
       tick = now
       until @stop
-        logger.info { "Publishing Sidekiq CloudWatch Metrics" }
+        Sidekiq.logger.info { "Publishing Sidekiq CloudWatch Metrics" }
         publish
 
         now = Time.now.to_f
@@ -70,7 +70,7 @@ module Sidekiq::CloudWatchMetrics
         sleep(tick - now) if tick > now
       end
 
-      logger.info { "Stopped Sidekiq CloudWatch Metrics Publisher" }
+      Sidekiq.logger.info { "Stopped Sidekiq CloudWatch Metrics Publisher" }
     end
 
     def publish
@@ -224,12 +224,12 @@ module Sidekiq::CloudWatchMetrics
     end
 
     def quiet
-      logger.info { "Quieting Sidekiq CloudWatch Metrics Publisher" }
+      Sidekiq.logger.info { "Quieting Sidekiq CloudWatch Metrics Publisher" }
       @stop = true
     end
 
     def stop
-      logger.info { "Stopping Sidekiq CloudWatch Metrics Publisher" }
+      Sidekiq.logger.info { "Stopping Sidekiq CloudWatch Metrics Publisher" }
       @stop = true
       @thread.wakeup
       @thread.join
