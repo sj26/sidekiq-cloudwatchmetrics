@@ -41,6 +41,7 @@ module Sidekiq::CloudWatchMetrics
     INTERVAL = 60 # seconds
 
     def initialize(client: Aws::CloudWatch::Client.new, namespace: "Sidekiq", additional_dimensions: {})
+      @config = Sidekiq
       @client = client
       @namespace = namespace
       @additional_dimensions = additional_dimensions.map { |k, v| {name: k.to_s, value: v.to_s} }
