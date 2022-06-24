@@ -2,7 +2,6 @@
 
 require "sidekiq"
 require "sidekiq/api"
-require "sidekiq/util"
 
 require "aws-sdk-cloudwatch"
 
@@ -34,7 +33,14 @@ module Sidekiq::CloudWatchMetrics
   end
 
   class Publisher
-    include Sidekiq::Util
+    if Sidekiq::VERSION >= Gem::Version.new('6.5.0')
+      def logger
+        Sidekiq.logger
+      end
+    else
+      require 'sidekiq/util'
+      include Sidekiq::Util
+    end
 
     INTERVAL = 60 # seconds
 
