@@ -12,7 +12,7 @@ module Sidekiq::CloudWatchMetrics
 
       # Sidekiq enterprise has a globally unique leader thread, making it
       # easier to publish the cluster-wide metrics from one place.
-      if Sidekiq.ent?
+      if defined?(Sidekiq::Enterprise)
         config.on(:leader) do
           publisher.start
         end
