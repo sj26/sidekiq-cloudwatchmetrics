@@ -10,8 +10,9 @@ module Sidekiq::CloudWatchMetrics
     Sidekiq.configure_server do |config|
       publisher = Publisher.new(**kwargs)
 
-      if Sidekiq.options[:lifecycle_events].has_key?(:leader)
-        # Only publish metrics on the leader if we have a leader (sidekiq-ent)
+      # Sidekiq enterprise has a globally unique leader thread, making it
+      # easier to publish the cluster-wide metrics from one place.
+      if Sidekiq.ent?
         config.on(:leader) do
           publisher.start
         end
