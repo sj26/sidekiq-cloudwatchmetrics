@@ -2,11 +2,16 @@ require "spec_helper"
 
 RSpec.describe Sidekiq::CloudWatchMetrics do
   describe ".enable!" do
+    # Sidekiq.options is deprecated as of Sidekiq 6.5, and must be accessed
+    # through Sidekiq[...] instead. This will change again once Sidekiq 7.0
+    # switches to Sidekiq::Config.
+    let(:sidekiq_options) { Sidekiq.respond_to?(:[]) ? Sidekiq : Sidekiq.options }
+
     # Sidekiq.options does a Sidekiq::DEFAULTS.dup which retains the same values, so
     # Sidekiq.options[:lifecycle_events] IS Sidekiq::DEFAULTS[:lifecycle_events] and
     # is mutable, so Sidekiq.options = nil will again Sidekiq::DEFAULTS.dup and get
     # the same Sidekiq::DEFAULTS[:lifecycle_events]. So we have to manually clear it.
-    before { Sidekiq.options[:lifecycle_events].each_value(&:clear) }
+    before { sidekiq_options[:lifecycle_events].each_value(&:clear) }
 
     context "in a sidekiq server" do
       before { allow(Sidekiq).to receive(:server?).and_return(true) }
@@ -18,9 +23,9 @@ RSpec.describe Sidekiq::CloudWatchMetrics do
         Sidekiq::CloudWatchMetrics.enable!
 
         # Look, this is hard.
-        expect(Sidekiq.options[:lifecycle_events][:startup]).not_to be_empty
-        expect(Sidekiq.options[:lifecycle_events][:quiet]).not_to be_empty
-        expect(Sidekiq.options[:lifecycle_events][:shutdown]).not_to be_empty
+        expect(sidekiq_options[:lifecycle_events][:startup]).not_to be_empty
+        expect(sidekiq_options[:lifecycle_events][:quiet]).not_to be_empty
+        expect(sidekiq_options[:lifecycle_events][:shutdown]).not_to be_empty
       end
     end
 
@@ -32,9 +37,9 @@ RSpec.describe Sidekiq::CloudWatchMetrics do
 
         Sidekiq::CloudWatchMetrics.enable!
 
-        expect(Sidekiq.options[:lifecycle_events][:startup]).to be_empty
-        expect(Sidekiq.options[:lifecycle_events][:quiet]).to be_empty
-        expect(Sidekiq.options[:lifecycle_events][:shutdown]).to be_empty
+        expect(sidekiq_options[:lifecycle_events][:startup]).to be_empty
+        expect(sidekiq_options[:lifecycle_events][:quiet]).to be_empty
+        expect(sidekiq_options[:lifecycle_events][:shutdown]).to be_empty
       end
     end
   end
