@@ -2,7 +2,6 @@
 
 require "sidekiq"
 require "sidekiq/api"
-require "sidekiq/util"
 
 require "aws-sdk-cloudwatch"
 
@@ -34,11 +33,21 @@ module Sidekiq::CloudWatchMetrics
   end
 
   class Publisher
-    include Sidekiq::Util
+    begin
+      require "sidekiq/util"
+      include Sidekiq::Util
+    rescue LoadError
+      # Sidekiq 6.5 refactored to use Sidekiq::Component
+      require "sidekiq/component"
+      include Sidekiq::Component
+    end
 
     INTERVAL = 60 # seconds
 
-    def initialize(client: Aws::CloudWatch::Client.new, namespace: "Sidekiq", additional_dimensions: {})
+    def initialize(config: Sidekiq, client: Aws::CloudWatch::Client.new, namespace: "Sidekiq", additional_dimensions: {})
+      # Sidekiq 6.5+ requires @config, which defaults to the top-level
+      # `Sidekiq` module, but can be overridden when running multiple Sidekiqs.
+      @config = config
       @client = client
       @namespace = namespace
       @additional_dimensions = additional_dimensions.map { |k, v| {name: k.to_s, value: v.to_s} }
