@@ -2,7 +2,6 @@
 
 require "sidekiq"
 require "sidekiq/api"
-require "sidekiq/util"
 
 require "aws-sdk-cloudwatch"
 
@@ -11,8 +10,9 @@ module Sidekiq::CloudWatchMetrics
     Sidekiq.configure_server do |config|
       publisher = Publisher.new(**kwargs)
 
-      if Sidekiq.options[:lifecycle_events].has_key?(:leader)
-        # Only publish metrics on the leader if we have a leader (sidekiq-ent)
+      # Sidekiq enterprise has a globally unique leader thread, making it
+      # easier to publish the cluster-wide metrics from one place.
+      if defined?(Sidekiq::Enterprise)
         config.on(:leader) do
           publisher.start
         end
@@ -34,11 +34,21 @@ module Sidekiq::CloudWatchMetrics
   end
 
   class Publisher
-    include Sidekiq::Util
+    begin
+      require "sidekiq/util"
+      include Sidekiq::Util
+    rescue LoadError
+      # Sidekiq 6.5 refactored to use Sidekiq::Component
+      require "sidekiq/component"
+      include Sidekiq::Component
+    end
 
     INTERVAL = 60 # seconds
 
-    def initialize(client: Aws::CloudWatch::Client.new, namespace: "Sidekiq", additional_dimensions: {})
+    def initialize(config: Sidekiq, client: Aws::CloudWatch::Client.new, namespace: "Sidekiq", additional_dimensions: {})
+      # Sidekiq 6.5+ requires @config, which defaults to the top-level
+      # `Sidekiq` module, but can be overridden when running multiple Sidekiqs.
+      @config = config
       @client = client
       @namespace = namespace
       @additional_dimensions = additional_dimensions.map { |k, v| {name: k.to_s, value: v.to_s} }
@@ -156,6 +166,14 @@ module Sidekiq::CloudWatchMetrics
           value: process["busy"] / process["concurrency"].to_f * 100.0,
           unit: "Percent",
         }
+
+        metrics << {
+          metric_name: "Utilization",
+          dimensions: [{name: "Tag", value: process["tag"]}],
+          timestamp: now,
+          value: process["busy"] / process["concurrency"].to_f * 100.0,
+          unit: "Percent",
+        }
       end
 
       queues.each do |(queue_name, queue_size)|
@@ -183,7 +201,6 @@ module Sidekiq::CloudWatchMetrics
           metric[:dimensions] = (metric[:dimensions] || []) + @additional_dimensions
         end
       end
-
       # We can only put 20 metrics at a time
       metrics.each_slice(20) do |some_metrics|
         @client.put_metric_data(
