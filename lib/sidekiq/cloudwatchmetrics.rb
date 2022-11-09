@@ -55,7 +55,7 @@ module Sidekiq::CloudWatchMetrics
     end
 
     def start
-      logger.info { "Starting Sidekiq CloudWatch Metrics Publisher" }
+      # logger.info { "Starting Sidekiq CloudWatch Metrics Publisher" }
 
       @done = false
       @thread = safe_thread("cloudwatch metrics publisher", &method(:run))
@@ -66,7 +66,7 @@ module Sidekiq::CloudWatchMetrics
     end
 
     def run
-      logger.info { "Started Sidekiq CloudWatch Metrics Publisher" }
+      # logger.info { "Started Sidekiq CloudWatch Metrics Publisher" }
 
       # Publish stats every INTERVAL seconds, sleeping as required between runs
       now = Time.now.to_f
@@ -80,7 +80,7 @@ module Sidekiq::CloudWatchMetrics
         sleep(tick - now) if tick > now
       end
 
-      logger.info { "Stopped Sidekiq CloudWatch Metrics Publisher" }
+      # logger.info { "Stopped Sidekiq CloudWatch Metrics Publisher" }
     end
 
     def publish
@@ -91,63 +91,9 @@ module Sidekiq::CloudWatchMetrics
 
       metrics = [
         {
-          metric_name: "ProcessedJobs",
-          timestamp: now,
-          value: stats.processed,
-          unit: "Count",
-        },
-        {
-          metric_name: "FailedJobs",
-          timestamp: now,
-          value: stats.failed,
-          unit: "Count",
-        },
-        {
           metric_name: "EnqueuedJobs",
           timestamp: now,
           value: stats.enqueued,
-          unit: "Count",
-        },
-        {
-          metric_name: "ScheduledJobs",
-          timestamp: now,
-          value: stats.scheduled_size,
-          unit: "Count",
-        },
-        {
-          metric_name: "RetryJobs",
-          timestamp: now,
-          value: stats.retry_size,
-          unit: "Count",
-        },
-        {
-          metric_name: "DeadJobs",
-          timestamp: now,
-          value: stats.dead_size,
-          unit: "Count",
-        },
-        {
-          metric_name: "Workers",
-          timestamp: now,
-          value: stats.workers_size,
-          unit: "Count",
-        },
-        {
-          metric_name: "Processes",
-          timestamp: now,
-          value: stats.processes_size,
-          unit: "Count",
-        },
-        {
-          metric_name: "DefaultQueueLatency",
-          timestamp: now,
-          value: stats.default_queue_latency,
-          unit: "Seconds",
-        },
-        {
-          metric_name: "Capacity",
-          timestamp: now,
-          value: calculate_capacity(processes),
           unit: "Count",
         },
         {
@@ -176,25 +122,25 @@ module Sidekiq::CloudWatchMetrics
         }
       end
 
-      queues.each do |(queue_name, queue_size)|
-        metrics << {
-          metric_name: "QueueSize",
-          dimensions: [{name: "QueueName", value: queue_name}],
-          timestamp: now,
-          value: queue_size,
-          unit: "Count",
-        }
-
-        queue_latency = Sidekiq::Queue.new(queue_name).latency
-
-        metrics << {
-          metric_name: "QueueLatency",
-          dimensions: [{name: "QueueName", value: queue_name}],
-          timestamp: now,
-          value: queue_latency,
-          unit: "Seconds",
-        }
-      end
+      # queues.each do |(queue_name, queue_size)|
+      #   metrics << {
+      #     metric_name: "QueueSize",
+      #     dimensions: [{name: "QueueName", value: queue_name}],
+      #     timestamp: now,
+      #     value: queue_size,
+      #     unit: "Count",
+      #   }
+      #
+      #   queue_latency = Sidekiq::Queue.new(queue_name).latency
+      #
+      #   metrics << {
+      #     metric_name: "QueueLatency",
+      #     dimensions: [{name: "QueueName", value: queue_name}],
+      #     timestamp: now,
+      #     value: queue_latency,
+      #     unit: "Seconds",
+      #   }
+      # end
 
       unless @additional_dimensions.empty?
         metrics = metrics.each do |metric|
