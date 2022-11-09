@@ -1,0 +1,27 @@
+name: Build and test
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ development ]
+
+jobs:
+  build_and_test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: 3.0
+      - name: Checkout GitHub Action Repo
+        uses: actions/checkout@v2
+        with:
+          repository: SecZetta/sz_gha_scripts
+          token: ${{ secrets.REPO_AND_PACKAGE_TOKEN }}
+          path: .github/actions/
+      - name: Build and Test
+        uses: ./.github/actions/build_and_test
+        with:
+          github_token: ${{ secrets.REPO_AND_PACKAGE_TOKEN }}
