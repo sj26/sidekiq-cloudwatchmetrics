@@ -3,9 +3,13 @@ require "spec_helper"
 RSpec.describe Sidekiq::CloudWatchMetrics do
   describe ".enable!" do
     # Sidekiq.options is deprecated as of Sidekiq 6.5, and must be accessed
-    # through Sidekiq[...] instead. This will change again once Sidekiq 7.0
-    # switches to Sidekiq::Config.
-    let(:sidekiq_options) { Sidekiq.respond_to?(:[]) ? Sidekiq : Sidekiq.options }
+    # through Sidekiq[...] instead. In Sidekiq 7.0 we must use Sidekiq::Config.new
+    let(:sidekiq_options) do
+      return Sidekiq if Sidekiq.respond_to?(:[])
+      return Sidekiq.options if Sidekiq.respond_to?(:options)
+
+      Sidekiq::Config.new
+    end
 
     # Sidekiq.options does a Sidekiq::DEFAULTS.dup which retains the same values, so
     # Sidekiq.options[:lifecycle_events] IS Sidekiq::DEFAULTS[:lifecycle_events] and
@@ -258,7 +262,7 @@ RSpec.describe Sidekiq::CloudWatchMetrics do
           allow(Sidekiq::ProcessSet).to receive(:new).and_return(processes)
           allow(Sidekiq::Queue).to receive(:new).with(/foo|bar|baz/).and_return(double(latency: 1.23))
 
-          publisher_with_custom_dimensions = 
+          publisher_with_custom_dimensions =
             Sidekiq::CloudWatchMetrics::Publisher.new(client: client, additional_dimensions: {appCluster: 1, type: "foo"})
 
           expect(client).to receive(:put_metric_data).ordered.with(
