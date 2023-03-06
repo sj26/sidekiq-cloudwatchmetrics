@@ -150,12 +150,6 @@ RSpec.describe Sidekiq::CloudWatchMetrics do
                 unit: "Count",
               },
               {
-                metric_name: "Utilization",
-                timestamp: now,
-                value: 30.0,
-                unit: "Percent",
-              },
-              {
                 metric_name: "DefaultQueueLatency",
                 timestamp: now,
                 value: 1.23,
@@ -163,17 +157,9 @@ RSpec.describe Sidekiq::CloudWatchMetrics do
               },
               {
                 metric_name: "Utilization",
-                dimensions: [{name: "Tag", value: nil}],
                 timestamp: now,
+                value: 30.0,
                 unit: "Percent",
-                value: 50.0,
-              },
-              {
-                metric_name: "Utilization",
-                dimensions: [{name: "Tag", value: nil}],
-                timestamp: now,
-                unit: "Percent",
-                value: 10.0,
               },
               {
                 metric_name: "Utilization",
@@ -232,6 +218,47 @@ RSpec.describe Sidekiq::CloudWatchMetrics do
             expect(client).to have_received(:put_metric_data) { |metrics|
               expect(metrics[:metric_data].size).to be <= 20
             }.at_least(:twice)
+          end
+        end
+      end
+
+      context "with process tags" do
+        let(:processes) do
+          [
+            Sidekiq::Process.new("busy" => 5, "concurrency" => 10, "hostname" => "foo", "tag" => "default"),
+            Sidekiq::Process.new("busy" => 2, "concurrency" => 20, "hostname" => "bar", "tag" => "shard-one"),
+          ]
+        end
+
+        it "publishes metrics including tag as a dimension" do
+          Timecop.freeze(now = Time.now) do
+            publisher.publish
+
+            expect(client).to have_received(:put_metric_data).with(
+              namespace: "Sidekiq",
+              metric_data: include(
+                {
+                  metric_name: "Utilization",
+                  timestamp: now,
+                  value: 30.0,
+                  unit: "Percent",
+                },
+                {
+                  metric_name: "Utilization",
+                  dimensions: [{name: "Hostname", value: "foo"}, {name: "Tag", value: "default"}],
+                  timestamp: now,
+                  unit: "Percent",
+                  value: 50.0,
+                },
+                {
+                  metric_name: "Utilization",
+                  dimensions: [{name: "Hostname", value: "bar"}, {name: "Tag", value: "shard-one"}],
+                  timestamp: now,
+                  unit: "Percent",
+                  value: 10.0,
+                },
+              ),
+            )
           end
         end
       end

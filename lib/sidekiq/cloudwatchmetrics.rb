@@ -159,17 +159,15 @@ module Sidekiq::CloudWatchMetrics
       ]
 
       processes.each do |process|
-        metrics << {
-          metric_name: "Utilization",
-          dimensions: [{name: "Hostname", value: process["hostname"]}],
-          timestamp: now,
-          value: process["busy"] / process["concurrency"].to_f * 100.0,
-          unit: "Percent",
-        }
+        process_dimensions = [{name: "Hostname", value: process["hostname"]}]
+
+        if process["tag"]
+          process_dimensions << {name: "Tag", value: process["tag"]}
+        end
 
         metrics << {
           metric_name: "Utilization",
-          dimensions: [{name: "Tag", value: process["tag"]}],
+          dimensions: process_dimensions,
           timestamp: now,
           value: process["busy"] / process["concurrency"].to_f * 100.0,
           unit: "Percent",
