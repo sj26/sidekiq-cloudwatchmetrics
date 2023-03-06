@@ -353,6 +353,29 @@ RSpec.describe Sidekiq::CloudWatchMetrics do
           end
         end
       end
+
+      context "when per process metrics are disabled" do
+        subject(:publisher) { Sidekiq::CloudWatchMetrics::Publisher.new(client: client, process_metrics: false) }
+
+        it "only publishes a single Utilization metric" do
+          Timecop.freeze(now = Time.now) do
+            publisher.publish
+
+            expect(client).to have_received(:put_metric_data) { |metrics|
+              utilization_data = metrics[:metric_data].select { |data| data[:metric_name] == "Utilization" }
+
+              expect(utilization_data).to contain_exactly(
+                {
+                  metric_name: "Utilization",
+                  timestamp: now,
+                  value: 30.0,
+                  unit: "Percent",
+                },
+              )
+            }
+          end
+        end
+      end
     end
 
     describe "#stop" do

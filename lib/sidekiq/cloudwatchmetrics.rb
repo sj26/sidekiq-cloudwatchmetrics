@@ -45,12 +45,13 @@ module Sidekiq::CloudWatchMetrics
 
     INTERVAL = 60 # seconds
 
-    def initialize(config: Sidekiq, client: Aws::CloudWatch::Client.new, namespace: "Sidekiq", additional_dimensions: {})
+    def initialize(config: Sidekiq, client: Aws::CloudWatch::Client.new, namespace: "Sidekiq", process_metrics: true, additional_dimensions: {})
       # Sidekiq 6.5+ requires @config, which defaults to the top-level
       # `Sidekiq` module, but can be overridden when running multiple Sidekiqs.
       @config = config
       @client = client
       @namespace = namespace
+      @process_metrics = process_metrics
       @additional_dimensions = additional_dimensions.map { |k, v| {name: k.to_s, value: v.to_s} }
     end
 
@@ -163,23 +164,25 @@ module Sidekiq::CloudWatchMetrics
         }
       end
 
-      processes.each do |process|
-        process_utilization = process["busy"] / process["concurrency"].to_f * 100.0
+      if @process_metrics
+        processes.each do |process|
+          process_utilization = process["busy"] / process["concurrency"].to_f * 100.0
 
-        unless process_utilization.nan?
-          process_dimensions = [{name: "Hostname", value: process["hostname"]}]
+          unless process_utilization.nan?
+            process_dimensions = [{name: "Hostname", value: process["hostname"]}]
 
-          if process["tag"]
-            process_dimensions << {name: "Tag", value: process["tag"]}
+            if process["tag"]
+              process_dimensions << {name: "Tag", value: process["tag"]}
+            end
+
+            metrics << {
+              metric_name: "Utilization",
+              dimensions: process_dimensions,
+              timestamp: now,
+              value: process_utilization,
+              unit: "Percent",
+            }
           end
-
-          metrics << {
-            metric_name: "Utilization",
-            dimensions: process_dimensions,
-            timestamp: now,
-            value: process_utilization,
-            unit: "Percent",
-          }
         end
       end
 
