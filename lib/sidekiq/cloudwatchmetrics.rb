@@ -152,31 +152,35 @@ module Sidekiq::CloudWatchMetrics
         },
       ]
 
-      # Only publish utilization once there is some capacity, otherwise we'll
-      # publish metrics with an invalid value of NaN.
-      if processes.any?
+      utilization = calculate_utilization(processes) * 100.0
+
+      unless utilization.nan?
         metrics << {
           metric_name: "Utilization",
           timestamp: now,
-          value: calculate_utilization(processes) * 100.0,
+          value: utilization,
           unit: "Percent",
         }
       end
 
       processes.each do |process|
-        process_dimensions = [{name: "Hostname", value: process["hostname"]}]
+        process_utilization = process["busy"] / process["concurrency"].to_f * 100.0
 
-        if process["tag"]
-          process_dimensions << {name: "Tag", value: process["tag"]}
+        unless process_utilization.nan?
+          process_dimensions = [{name: "Hostname", value: process["hostname"]}]
+
+          if process["tag"]
+            process_dimensions << {name: "Tag", value: process["tag"]}
+          end
+
+          metrics << {
+            metric_name: "Utilization",
+            dimensions: process_dimensions,
+            timestamp: now,
+            value: process_utilization,
+            unit: "Percent",
+          }
         end
-
-        metrics << {
-          metric_name: "Utilization",
-          dimensions: process_dimensions,
-          timestamp: now,
-          value: process["busy"] / process["concurrency"].to_f * 100.0,
-          unit: "Percent",
-        }
       end
 
       queues.each do |(queue_name, queue_size)|
@@ -222,10 +226,13 @@ module Sidekiq::CloudWatchMetrics
     end
 
     # Returns busy / concurrency averaged across processes (for scaling)
+    # Avoid considering processes not yet running any threads
     private def calculate_utilization(processes)
-      processes.map do |process|
+      process_utilizations = processes.map do |process|
         process["busy"] / process["concurrency"].to_f
-      end.sum / processes.size.to_f
+      end.reject(&:nan?)
+
+      process_utilizations.sum / process_utilizations.size.to_f
     end
 
     def quiet
