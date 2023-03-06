@@ -150,28 +150,37 @@ module Sidekiq::CloudWatchMetrics
           value: calculate_capacity(processes),
           unit: "Count",
         },
-        {
-          metric_name: "Utilization",
-          timestamp: now,
-          value: calculate_utilization(processes) * 100.0,
-          unit: "Percent",
-        },
       ]
 
-      processes.each do |process|
-        process_dimensions = [{name: "Hostname", value: process["hostname"]}]
+      utilization = calculate_utilization(processes) * 100.0
 
-        if process["tag"]
-          process_dimensions << {name: "Tag", value: process["tag"]}
-        end
-
+      unless utilization.nan?
         metrics << {
           metric_name: "Utilization",
-          dimensions: process_dimensions,
           timestamp: now,
-          value: process["busy"] / process["concurrency"].to_f * 100.0,
+          value: utilization,
           unit: "Percent",
         }
+      end
+
+      processes.each do |process|
+        process_utilization = process["busy"] / process["concurrency"].to_f * 100.0
+
+        unless process_utilization.nan?
+          process_dimensions = [{name: "Hostname", value: process["hostname"]}]
+
+          if process["tag"]
+            process_dimensions << {name: "Tag", value: process["tag"]}
+          end
+
+          metrics << {
+            metric_name: "Utilization",
+            dimensions: process_dimensions,
+            timestamp: now,
+            value: process_utilization,
+            unit: "Percent",
+          }
+        end
       end
 
       queues.each do |(queue_name, queue_size)|
@@ -199,6 +208,7 @@ module Sidekiq::CloudWatchMetrics
           metric[:dimensions] = (metric[:dimensions] || []) + @additional_dimensions
         end
       end
+
       # We can only put 20 metrics at a time
       metrics.each_slice(20) do |some_metrics|
         @client.put_metric_data(
@@ -216,10 +226,13 @@ module Sidekiq::CloudWatchMetrics
     end
 
     # Returns busy / concurrency averaged across processes (for scaling)
+    # Avoid considering processes not yet running any threads
     private def calculate_utilization(processes)
-      processes.map do |process|
+      process_utilizations = processes.map do |process|
         process["busy"] / process["concurrency"].to_f
-      end.sum / processes.size.to_f
+      end.reject(&:nan?)
+
+      process_utilizations.sum / process_utilizations.size.to_f
     end
 
     def quiet
