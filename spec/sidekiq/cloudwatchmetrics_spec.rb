@@ -296,17 +296,12 @@ RSpec.describe Sidekiq::CloudWatchMetrics do
       context "when there are no processes yet" do
         let(:processes) { [] }
 
-        it "publishes metrics including a utilization of 0 (not NaN)" do
+        it "does not publish Utilization (to avoid NaN values)" do
           Timecop.freeze(now = Time.now) do
             publisher.publish
 
             expect(client).to have_received(:put_metric_data) { |metrics|
-              expect(metrics[:metric_data]).to include({
-                metric_name: "Utilization",
-                timestamp: now,
-                value: 0.0,
-                unit: "Percent",
-              })
+              expect(metrics[:metric_data]).not_to include(hash_including(metric_name: "Utilization"))
             }
           end
         end

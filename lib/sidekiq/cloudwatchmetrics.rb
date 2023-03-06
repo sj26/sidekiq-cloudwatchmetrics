@@ -150,13 +150,18 @@ module Sidekiq::CloudWatchMetrics
           value: calculate_capacity(processes),
           unit: "Count",
         },
-        {
+      ]
+
+      # Only publish utilization once there is some capacity, otherwise we'll
+      # publish metrics with an invalid value of NaN.
+      if processes.any?
+        metrics << {
           metric_name: "Utilization",
           timestamp: now,
           value: calculate_utilization(processes) * 100.0,
           unit: "Percent",
-        },
-      ]
+        }
+      end
 
       processes.each do |process|
         process_dimensions = [{name: "Hostname", value: process["hostname"]}]
@@ -199,6 +204,7 @@ module Sidekiq::CloudWatchMetrics
           metric[:dimensions] = (metric[:dimensions] || []) + @additional_dimensions
         end
       end
+
       # We can only put 20 metrics at a time
       metrics.each_slice(20) do |some_metrics|
         @client.put_metric_data(
@@ -217,8 +223,6 @@ module Sidekiq::CloudWatchMetrics
 
     # Returns busy / concurrency averaged across processes (for scaling)
     private def calculate_utilization(processes)
-      return 0.0 if processes.empty?
-
       processes.map do |process|
         process["busy"] / process["concurrency"].to_f
       end.sum / processes.size.to_f
