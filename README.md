@@ -46,6 +46,14 @@ The default namespace for metrics is "Sidekiq". You can configure this with the 
 Sidekiq::CloudWatchMetrics.enable!(client: Aws::CloudWatch::Client.new, namespace: "Sidekiq-Staging")
 ```
 
+By default, each process will emit a `Utilization` metric with the hostname and
+tag as dimensions, and then an average `Utilization` metric is omitted as an
+autoscaling target. If you don't want the per-process metrics then htey can be
+turned off:
+
+```ruby
+Sidekiq::CloudWatchMetrics.enable!(client: Aws::CloudWatch::Client.new, process_metrics: false)
+```
 
 ## Development
 
