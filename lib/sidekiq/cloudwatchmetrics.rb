@@ -164,6 +164,24 @@ module Sidekiq::CloudWatchMetrics
         }
       end
 
+      processes.group_by do |process|
+        process["tag"]
+      end.each do |(tag, tag_processes)|
+        next if tag.nil?
+
+        tag_utilization = calculate_utilization(tag_processes) * 100.0
+
+        unless tag_utilization.nan?
+          metrics << {
+            metric_name: "Utilization",
+            dimensions: [{name: "Tag", value: tag}],
+            timestamp: now,
+            value: tag_utilization,
+            unit: "Percent",
+          }
+        end
+      end
+
       if @process_metrics
         processes.each do |process|
           process_utilization = process["busy"] / process["concurrency"].to_f * 100.0

@@ -245,6 +245,20 @@ RSpec.describe Sidekiq::CloudWatchMetrics do
                 },
                 {
                   metric_name: "Utilization",
+                  dimensions: [{name: "Tag", value: "default"}],
+                  timestamp: now,
+                  value: 50.0,
+                  unit: "Percent",
+                },
+                {
+                  metric_name: "Utilization",
+                  dimensions: [{name: "Tag", value: "shard-one"}],
+                  timestamp: now,
+                  value: 10.0,
+                  unit: "Percent",
+                },
+                {
+                  metric_name: "Utilization",
                   dimensions: [{name: "Hostname", value: "foo"}, {name: "Tag", value: "default"}],
                   timestamp: now,
                   unit: "Percent",
