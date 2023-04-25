@@ -45,7 +45,7 @@ module Sidekiq::CloudWatchMetrics
 
     INTERVAL = 60 # seconds
 
-    def initialize(config: Sidekiq, client: Aws::CloudWatch::Client.new, namespace: "Sidekiq", process_metrics: true, additional_dimensions: {})
+    def initialize(config: Sidekiq, client: Aws::CloudWatch::Client.new, namespace: "Sidekiq", process_metrics: true, additional_dimensions: {}, skip_logs: false)
       # Sidekiq 6.5+ requires @config, which defaults to the top-level
       # `Sidekiq` module, but can be overridden when running multiple Sidekiqs.
       @config = config
@@ -53,10 +53,11 @@ module Sidekiq::CloudWatchMetrics
       @namespace = namespace
       @process_metrics = process_metrics
       @additional_dimensions = additional_dimensions.map { |k, v| {name: k.to_s, value: v.to_s} }
+      @skip_logs = skip_logs
     end
 
     def start
-      logger.info { "Starting Sidekiq CloudWatch Metrics Publisher" }
+      logger.info { "Starting Sidekiq CloudWatch Metrics Publisher" } unless @skip_logs
 
       @done = false
       @thread = safe_thread("cloudwatch metrics publisher", &method(:run))
@@ -67,13 +68,13 @@ module Sidekiq::CloudWatchMetrics
     end
 
     def run
-      logger.info { "Started Sidekiq CloudWatch Metrics Publisher" }
+      logger.info { "Started Sidekiq CloudWatch Metrics Publisher" } unless @skip_logs
 
       # Publish stats every INTERVAL seconds, sleeping as required between runs
       now = Time.now.to_f
       tick = now
       until @stop
-        logger.info { "Publishing Sidekiq CloudWatch Metrics" }
+        logger.info { "Publishing Sidekiq CloudWatch Metrics" } unless @skip_logs
         publish
 
         now = Time.now.to_f
@@ -81,7 +82,7 @@ module Sidekiq::CloudWatchMetrics
         sleep(tick - now) if tick > now
       end
 
-      logger.info { "Stopped Sidekiq CloudWatch Metrics Publisher" }
+      logger.info { "Stopped Sidekiq CloudWatch Metrics Publisher" } unless @skip_logs
     end
 
     def publish
@@ -257,12 +258,12 @@ module Sidekiq::CloudWatchMetrics
     end
 
     def quiet
-      logger.info { "Quieting Sidekiq CloudWatch Metrics Publisher" }
+      logger.info { "Quieting Sidekiq CloudWatch Metrics Publisher" } unless @skip_logs
       @stop = true
     end
 
     def stop
-      logger.info { "Stopping Sidekiq CloudWatch Metrics Publisher" }
+      logger.info { "Stopping Sidekiq CloudWatch Metrics Publisher" } unless @skip_logs
       @stop = true
       @thread.wakeup
       @thread.join
