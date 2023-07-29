@@ -67,7 +67,7 @@ module Sidekiq::CloudWatchMetrics
     end
 
     def run
-      logger.debug { "Started Sidekiq CloudWatch Metrics Publisher" }
+      logger.info { "Started Sidekiq CloudWatch Metrics Publisher" }
 
       # Publish stats every INTERVAL seconds, sleeping as required between runs
       now = Time.now.to_f
