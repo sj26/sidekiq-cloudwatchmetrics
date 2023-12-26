@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "sidekiq/api"
+
 module Sidekiq::CloudWatchMetrics
   class Collector
     def initialize(process_metrics: true, additional_dimensions: {})
