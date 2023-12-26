@@ -279,6 +279,7 @@ RSpec.describe Sidekiq::CloudWatchMetrics do
 
       context "with custom dimensions" do
         let(:collector) { Sidekiq::CloudWatchMetrics::Collector.new(additional_dimensions: {appCluster: 1, type: "foo"}) }
+
         subject(:publisher) { Sidekiq::CloudWatchMetrics::Publisher.new(client: client, collector: collector) }
 
         it "publishes metrics with custom dimensions" do
@@ -371,6 +372,7 @@ RSpec.describe Sidekiq::CloudWatchMetrics do
 
       context "when per process metrics are disabled" do
         let(:collector) { Sidekiq::CloudWatchMetrics::Collector.new(process_metrics: false) }
+
         subject(:publisher) { Sidekiq::CloudWatchMetrics::Publisher.new(client: client, collector: collector) }
 
         it "only publishes a single Utilization metric" do
@@ -391,6 +393,23 @@ RSpec.describe Sidekiq::CloudWatchMetrics do
             }
           end
         end
+      end
+    end
+
+    context "with custom collector" do
+      let(:collector) { double(collect: [{ metric_name: "Custom" }]) }
+
+      subject(:publisher) { Sidekiq::CloudWatchMetrics::Publisher.new(client: client, collector: collector) }
+
+      it "uses custom collector" do
+        publisher.publish
+
+        expect(collector).to have_received(:collect)
+        expect(client).to have_received(:put_metric_data)
+                            .with(
+                              namespace: instance_of(String),
+                              metric_data: [{ metric_name: "Custom" }]
+                            )
       end
     end
 

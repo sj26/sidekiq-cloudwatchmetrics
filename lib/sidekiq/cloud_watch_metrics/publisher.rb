@@ -29,6 +29,7 @@ module Sidekiq::CloudWatchMetrics
       @config = config
       @client = client
       @namespace = namespace
+
       if collector_kwargs.size > 0
         warn <<~TEXT
           Implicit collector arguments are deprecated.
@@ -76,8 +77,8 @@ module Sidekiq::CloudWatchMetrics
       metrics.each_slice(20) do |some_metrics|
         @client.put_metric_data(
           namespace: @namespace,
-          metric_data: some_metrics,
-          )
+          metric_data: some_metrics
+        )
       end
     end
 
