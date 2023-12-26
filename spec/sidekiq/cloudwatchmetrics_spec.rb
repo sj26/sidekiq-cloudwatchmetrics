@@ -278,7 +278,8 @@ RSpec.describe Sidekiq::CloudWatchMetrics do
       end
 
       context "with custom dimensions" do
-        subject(:publisher) { Sidekiq::CloudWatchMetrics::Publisher.new(client: client, additional_dimensions: {appCluster: 1, type: "foo"}) }
+        let(:collector) { Sidekiq::CloudWatchMetrics::Collector.new(additional_dimensions: {appCluster: 1, type: "foo"}) }
+        subject(:publisher) { Sidekiq::CloudWatchMetrics::Publisher.new(client: client, collector: collector) }
 
         it "publishes metrics with custom dimensions" do
           Timecop.freeze(now = Time.now) do
@@ -369,7 +370,8 @@ RSpec.describe Sidekiq::CloudWatchMetrics do
       end
 
       context "when per process metrics are disabled" do
-        subject(:publisher) { Sidekiq::CloudWatchMetrics::Publisher.new(client: client, process_metrics: false) }
+        let(:collector) { Sidekiq::CloudWatchMetrics::Collector.new(process_metrics: false) }
+        subject(:publisher) { Sidekiq::CloudWatchMetrics::Publisher.new(client: client, collector: collector) }
 
         it "only publishes a single Utilization metric" do
           Timecop.freeze(now = Time.now) do

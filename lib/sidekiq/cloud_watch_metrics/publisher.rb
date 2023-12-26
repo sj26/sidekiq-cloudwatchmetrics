@@ -23,18 +23,21 @@ module Sidekiq::CloudWatchMetrics
                    client: Aws::CloudWatch::Client.new,
                    namespace: "Sidekiq",
                    collector: nil,
-                   process_metrics: true,
-                   additional_dimensions: {})
+                   **collector_kwargs)
       # Sidekiq 6.5+ requires @config, which defaults to the top-level
       # `Sidekiq` module, but can be overridden when running multiple Sidekiqs.
       @config = config
       @client = client
       @namespace = namespace
-      @collector = collector ||
-        Collector.new(
-          process_metrics: process_metrics,
-          additional_dimensions: additional_dimensions
-        )
+      if collector_kwargs.size > 0
+        warn <<~TEXT
+          Implicit collector arguments are deprecated.
+          Please instantiate a collector and pass it explicitly:
+          Sidekiq::CloudWatchMetrics.enable!(collector: CustomCollector.new)
+        TEXT
+      end
+
+      @collector = collector || Collector.new(**collector_kwargs)
     end
 
     def start
