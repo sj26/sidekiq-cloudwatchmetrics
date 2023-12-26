@@ -85,7 +85,18 @@ module Sidekiq::CloudWatchMetrics
     end
 
     def publish
-      now = Time.now
+      metrics = collect_metrics(now: Time.now)
+
+      # We can only put 20 metrics at a time
+      metrics.each_slice(20) do |some_metrics|
+        @client.put_metric_data(
+          namespace: @namespace,
+          metric_data: some_metrics,
+          )
+      end
+    end
+
+    private def collect_metrics(now:)
       stats = Sidekiq::Stats.new
       processes = Sidekiq::ProcessSet.new.to_enum(:each).to_a
       queues = stats.queues
@@ -230,13 +241,7 @@ module Sidekiq::CloudWatchMetrics
         end
       end
 
-      # We can only put 20 metrics at a time
-      metrics.each_slice(20) do |some_metrics|
-        @client.put_metric_data(
-          namespace: @namespace,
-          metric_data: some_metrics,
-        )
-      end
+      metrics
     end
 
     # Returns the total number of workers across all processes
