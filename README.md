@@ -46,6 +46,26 @@ The default namespace for metrics is "Sidekiq". You can configure this with the 
 Sidekiq::CloudWatchMetrics.enable!(client: Aws::CloudWatch::Client.new, namespace: "Sidekiq-Staging")
 ```
 
+You can also extend the metrics that are collected:
+
+```ruby
+class CustomCollector < Sidekiq::CloudWatchMetrics::Collector
+  def collect
+    metrics = super
+
+    metrics << {
+      metric_name: 'MaxQueueLatency',
+      timestamp: Time.now,
+      value: Sidekiq::Queue.all.map(&:latency).max,
+      unit: 'Seconds'
+    }
+
+    metrics
+  end
+end
+
+Sidekiq::CloudWatchMetrics.enable!(collector: CustomCollector.new)
+```
 
 ## Development
 
