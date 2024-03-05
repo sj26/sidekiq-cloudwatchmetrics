@@ -52,9 +52,10 @@ RSpec.describe Sidekiq::CloudWatchMetrics do
 
   describe "Publisher" do
     let(:client) { instance_double(Aws::CloudWatch::Client) }
+    let(:interval) { nil }
     before { allow(client).to receive(:put_metric_data) }
 
-    subject(:publisher) { Sidekiq::CloudWatchMetrics::Publisher.new(client: client) }
+    subject(:publisher) { Sidekiq::CloudWatchMetrics::Publisher.new(client: client, interval: interval) }
 
     describe "#run" do
       it "publishes metrics until stopped" do
@@ -242,6 +243,32 @@ RSpec.describe Sidekiq::CloudWatchMetrics do
               },
             ),
           )
+        end
+
+        describe 'Overriding publishing interval' do
+          shared_examples 'a metric publisher' do
+            it "Publishes #{times} times" do      
+              Timecop.freeze(now = Time.now) do
+                expect(client).to receive(:put_metric_data).exactly(times).times
+                publisher.run
+                sleep(interval)
+              end
+            end
+          end
+              
+          context 'Default interval (60 seconds)' do
+            let(:times) { 1 }
+
+            it_behaves_like "a metric publisher" 
+          end
+
+          context 'Short interval (1 second)' do
+            let(:times) { 2 }
+            let(:interval) { 1 }
+            
+            it_behaves_like "a metric publisher" 
+
+
         end
       end
 
