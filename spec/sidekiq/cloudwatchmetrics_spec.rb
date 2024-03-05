@@ -207,31 +207,29 @@ RSpec.describe Sidekiq::CloudWatchMetrics do
             ),
           )
         end
+      end
 
-        describe 'Overriding publishing interval' do
-          shared_examples 'a metric publisher' do
-            it "Publishes #{times} times" do      
-              Timecop.freeze(now = Time.now) do
-                expect(client).to receive(:put_metric_data).exactly(times).times
-                publisher.run
-                sleep(interval)
-              end
-            end
+      describe 'Overriding publishing interval' do
+        shared_examples 'a metric publisher' do
+          it "Publishes the correct number of times" do
+            expect(client).to receive(:put_metric_data).exactly(times).times
+            publisher.start
+            sleep(1.2)
+            publisher.stop
           end
-              
-          context 'Default interval (60 seconds)' do
-            let(:times) { 1 }
+        end
 
-            it_behaves_like "a metric publisher" 
-          end
+        context 'Default interval (60 seconds)' do
+          let(:times) { 1 }
 
-          context 'Short interval (1 second)' do
-            let(:times) { 2 }
-            let(:interval) { 1 }
-            
-            it_behaves_like "a metric publisher" 
+          it_behaves_like "a metric publisher"
+        end
 
+        context 'Short interval (1 second)' do
+          let(:times) { 2 }
+          let(:interval) { 1 }
 
+          it_behaves_like "a metric publisher"
         end
       end
 
