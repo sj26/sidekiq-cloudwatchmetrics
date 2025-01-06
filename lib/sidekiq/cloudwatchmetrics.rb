@@ -232,11 +232,30 @@ module Sidekiq::CloudWatchMetrics
 
       # We can only put 20 metrics at a time
       metrics.each_slice(20) do |some_metrics|
-        @client.put_metric_data(
-          namespace: @namespace,
-          metric_data: some_metrics,
-        )
+        retry_count = 0
+
+        begin
+          @client.put_metric_data(
+            namespace: @namespace,
+            metric_data: some_metrics,
+          )
+        rescue Aws::CloudWatch::Errors::ExpiredToken => e
+          if retry_count < 3
+            retry_count += 1
+            logger.warn("#{@client.class} security token expired. Refreshing client and retrying... (attempt #{retry_count})")
+            refresh_client_credentials!
+            retry
+          else
+            logger.error("Exceeded retry limit for #{@client.class} security token refresh. Error: #{e.message}")
+            raise # Re-raise the error after exceeding the retry limit
+          end
+        end
       end
+    end
+
+    def refresh_client_credentials!
+      logger.info("Refreshing #{@client.class} credentials...")
+      @client.credentials.refresh!
     end
 
     # Returns the total number of workers across all processes
