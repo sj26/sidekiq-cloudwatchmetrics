@@ -1,7 +1,5 @@
 # Sidekiq CloudWatch Metrics
 
-[![Build Status](https://travis-ci.org/sj26/sidekiq-cloudwatchmetrics.svg)](https://travis-ci.org/sj26/sidekiq-cloudwatchmetrics)
-
 Runs a thread inside your Sidekiq processes to report metrics to CloudWatch
 useful for autoscaling and keeping an eye on your queues.
 
