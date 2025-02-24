@@ -69,6 +69,21 @@ RSpec.describe Sidekiq::CloudWatchMetrics do
         fiber.resume
         expect(fiber).not_to be_alive
       end
+
+      it "survives an error raised during publishing" do
+        allow(publisher).to receive(:sleep) { |seconds| Fiber.yield(:sleep) }
+
+        exception = RuntimeError.new("oh no")
+        allow(publisher).to receive(:publish).and_invoke(lambda { raise exception }, lambda { Fiber.yield(:publish) })
+        allow(publisher).to receive(:handle_exception) { |exception| Fiber.yield(:exception, exception) }
+
+        fiber = Fiber.new { publisher.run }
+        expect(fiber.resume).to eql([:exception, exception])
+        expect(fiber.resume).to eql(:sleep)
+        expect(fiber.resume).to eql(:publish)
+        expect(fiber.resume).to eql(:sleep)
+        fiber.kill
+      end
     end
 
     describe "#publish" do

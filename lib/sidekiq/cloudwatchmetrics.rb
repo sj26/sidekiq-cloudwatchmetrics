@@ -74,7 +74,12 @@ module Sidekiq::CloudWatchMetrics
       tick = now
       until @stop
         logger.debug { "Publishing Sidekiq CloudWatch Metrics" }
-        publish
+        begin
+          publish
+        rescue => e
+          logger.error("Error publishing Sidekiq CloudWatch Metrics: #{e}")
+          handle_exception(e)
+        end
 
         now = Time.now.to_f
         tick = [tick + INTERVAL, now].max
