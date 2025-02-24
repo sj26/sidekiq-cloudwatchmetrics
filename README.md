@@ -43,15 +43,14 @@ Sidekiq::CloudWatchMetrics.enable!(client: Aws::CloudWatch::Client.new)
 The default namespace for metrics is "Sidekiq". You can configure this with the `namespace` option:
 
 ```ruby
-Sidekiq::CloudWatchMetrics.enable!(client: Aws::CloudWatch::Client.new, namespace: "Sidekiq-Staging")
+Sidekiq::CloudWatchMetrics.enable!(namespace: "Sidekiq-Staging")
 ```
 
 Publishing interval by default is 60 seconds. You can adjust this as follows:
 
 ```ruby
-Sidekiq::CloudWatchMetrics.enable!(client: Aws::CloudWatch::Client.new, interval: 30)
+Sidekiq::CloudWatchMetrics.enable!(interval: 30)
 ```
-
 
 ## Development
 
