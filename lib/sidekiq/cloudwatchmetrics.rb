@@ -175,12 +175,22 @@ module Sidekiq::CloudWatchMetrics
       end.each do |(tag, tag_processes)|
         next if tag.nil?
 
+        tag_dimensions = [{name: "Tag", value: tag}]
+
+        metrics << {
+          metric_name: "Capacity",
+          dimensions: tag_dimensions,
+          timestamp: now,
+          value: calculate_capacity(tag_processes),
+          unit: "Count",
+        }
+
         tag_utilization = calculate_utilization(tag_processes) * 100.0
 
         unless tag_utilization.nan?
           metrics << {
             metric_name: "Utilization",
-            dimensions: [{name: "Tag", value: tag}],
+            dimensions: tag_dimensions,
             timestamp: now,
             value: tag_utilization,
             unit: "Percent",

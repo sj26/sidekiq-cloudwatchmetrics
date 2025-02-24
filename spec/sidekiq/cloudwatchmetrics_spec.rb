@@ -279,8 +279,9 @@ RSpec.describe Sidekiq::CloudWatchMetrics do
       context "with process tags" do
         let(:processes) do
           [
-            Sidekiq::Process.new("busy" => 5, "concurrency" => 10, "hostname" => "foo", "tag" => "default"),
+            Sidekiq::Process.new("busy" => 5, "concurrency" => 5, "hostname" => "foo", "tag" => "default"),
             Sidekiq::Process.new("busy" => 2, "concurrency" => 20, "hostname" => "bar", "tag" => "shard-one"),
+            Sidekiq::Process.new("busy" => 0, "concurrency" => 5, "hostname" => "baz", "tag" => "default"),
           ]
         end
 
@@ -294,8 +295,15 @@ RSpec.describe Sidekiq::CloudWatchMetrics do
                 {
                   metric_name: "Utilization",
                   timestamp: now,
-                  value: 30.0,
+                  value: 36.66666666666667,
                   unit: "Percent",
+                },
+                {
+                  metric_name: "Capacity",
+                  dimensions: [{name: "Tag", value: "default"}],
+                  timestamp: now,
+                  unit: "Count",
+                  value: 10,
                 },
                 {
                   metric_name: "Utilization",
@@ -303,6 +311,13 @@ RSpec.describe Sidekiq::CloudWatchMetrics do
                   timestamp: now,
                   value: 50.0,
                   unit: "Percent",
+                },
+                {
+                  metric_name: "Capacity",
+                  dimensions: [{name: "Tag", value: "shard-one"}],
+                  timestamp: now,
+                  unit: "Count",
+                  value: 20,
                 },
                 {
                   metric_name: "Utilization",
@@ -316,7 +331,7 @@ RSpec.describe Sidekiq::CloudWatchMetrics do
                   dimensions: [{name: "Hostname", value: "foo"}, {name: "Tag", value: "default"}],
                   timestamp: now,
                   unit: "Percent",
-                  value: 50.0,
+                  value: 100.0,
                 },
                 {
                   metric_name: "Utilization",
@@ -324,6 +339,13 @@ RSpec.describe Sidekiq::CloudWatchMetrics do
                   timestamp: now,
                   unit: "Percent",
                   value: 10.0,
+                },
+                {
+                  metric_name: "Utilization",
+                  dimensions: [{name: "Hostname", value: "baz"}, {name: "Tag", value: "default"}],
+                  timestamp: now,
+                  unit: "Percent",
+                  value: 0.0,
                 },
               ),
             )
