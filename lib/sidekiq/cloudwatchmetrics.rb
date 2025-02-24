@@ -43,13 +43,14 @@ module Sidekiq::CloudWatchMetrics
       include Sidekiq::Component
     end
 
-    INTERVAL = 60 # seconds
+    DEFAULT_INTERVAL = 60 # seconds
 
-    def initialize(config: Sidekiq, client: Aws::CloudWatch::Client.new, namespace: "Sidekiq", process_metrics: true, additional_dimensions: {})
+    def initialize(config: Sidekiq, client: Aws::CloudWatch::Client.new, namespace: "Sidekiq", process_metrics: true, additional_dimensions: {}, interval: DEFAULT_INTERVAL)
       # Sidekiq 6.5+ requires @config, which defaults to the top-level
       # `Sidekiq` module, but can be overridden when running multiple Sidekiqs.
       @config = config
       @client = client
+      @interval = interval
       @namespace = namespace
       @process_metrics = process_metrics
       @additional_dimensions = additional_dimensions.map { |k, v| {name: k.to_s, value: v.to_s} }
@@ -69,7 +70,7 @@ module Sidekiq::CloudWatchMetrics
     def run
       logger.info { "Started Sidekiq CloudWatch Metrics Publisher" }
 
-      # Publish stats every INTERVAL seconds, sleeping as required between runs
+      # Publish stats every @interval seconds, sleeping as required between runs
       now = Time.now.to_f
       tick = now
       until @stop
@@ -82,7 +83,7 @@ module Sidekiq::CloudWatchMetrics
         end
 
         now = Time.now.to_f
-        tick = [tick + INTERVAL, now].max
+        tick = [tick + @interval, now].max
         sleep(tick - now) if tick > now
       end
 

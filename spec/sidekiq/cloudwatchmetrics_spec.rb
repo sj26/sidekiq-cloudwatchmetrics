@@ -58,18 +58,35 @@ RSpec.describe Sidekiq::CloudWatchMetrics do
 
     describe "#run" do
       it "publishes metrics until stopped" do
-        allow(publisher).to receive(:sleep) { |seconds| Fiber.yield(:sleep) }
+        allow(publisher).to receive(:sleep) { |seconds| Fiber.yield(:sleep, seconds) }
         allow(publisher).to receive(:publish) { Fiber.yield(:publish) }
 
         fiber = Fiber.new { publisher.run }
         expect(fiber.resume).to eql(:publish)
-        expect(fiber.resume).to eql(:sleep)
+        expect(fiber.resume).to match([:sleep, be_a_kind_of(Numeric) & (be < Sidekiq::CloudWatchMetrics::Publisher::DEFAULT_INTERVAL)])
         expect(fiber.resume).to eql(:publish)
-        expect(fiber.resume).to eql(:sleep)
+        expect(fiber.resume).to match([:sleep, be_a_kind_of(Numeric) & (be < (Sidekiq::CloudWatchMetrics::Publisher::DEFAULT_INTERVAL * 2))])
 
         publisher.stop
         fiber.resume
         expect(fiber).not_to be_alive
+      end
+
+      context "with a custom interval" do
+        subject(:publisher) { Sidekiq::CloudWatchMetrics::Publisher.new(client: client, interval: 30) }
+
+        it "respects a custom interval" do
+          allow(publisher).to receive(:sleep) { |seconds| Fiber.yield(:sleep, seconds) }
+          allow(publisher).to receive(:publish) { Fiber.yield(:publish) }
+
+          fiber = Fiber.new { publisher.run }
+          expect(fiber.resume).to eql(:publish)
+          expect(fiber.resume).to match([:sleep, be_a_kind_of(Numeric) & (be < 30)])
+
+          publisher.stop
+          fiber.resume
+          expect(fiber).not_to be_alive
+        end
       end
 
       it "survives an error raised during publishing" do
