@@ -189,7 +189,7 @@ module Sidekiq::CloudWatchMetrics
           unless process_utilization.nan?
             process_dimensions = [{name: "Hostname", value: process["hostname"]}]
 
-            unless process["tag"].empty?
+            if process["tag"] && !process["tag"].to_s.empty?
               process_dimensions << {name: "Tag", value: process["tag"]}
             end
 
