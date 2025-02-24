@@ -82,7 +82,10 @@ RSpec.describe Sidekiq::CloudWatchMetrics do
         expect(fiber.resume).to eql(:sleep)
         expect(fiber.resume).to eql(:publish)
         expect(fiber.resume).to eql(:sleep)
-        fiber.kill
+
+        publisher.stop
+        fiber.resume
+        expect(fiber).not_to be_alive
       end
     end
 
