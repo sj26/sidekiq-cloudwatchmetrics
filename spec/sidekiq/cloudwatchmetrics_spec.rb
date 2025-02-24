@@ -52,25 +52,41 @@ RSpec.describe Sidekiq::CloudWatchMetrics do
 
   describe "Publisher" do
     let(:client) { instance_double(Aws::CloudWatch::Client) }
-    let(:interval) { nil }
     before { allow(client).to receive(:put_metric_data) }
 
-    subject(:publisher) { Sidekiq::CloudWatchMetrics::Publisher.new(client: client, interval: interval) }
+    subject(:publisher) { Sidekiq::CloudWatchMetrics::Publisher.new(client: client) }
 
     describe "#run" do
       it "publishes metrics until stopped" do
-        allow(publisher).to receive(:sleep) { |seconds| Fiber.yield(:sleep) }
+        allow(publisher).to receive(:sleep) { |seconds| Fiber.yield(:sleep, seconds) }
         allow(publisher).to receive(:publish) { Fiber.yield(:publish) }
 
         fiber = Fiber.new { publisher.run }
         expect(fiber.resume).to eql(:publish)
-        expect(fiber.resume).to eql(:sleep)
+        expect(fiber.resume).to match([:sleep, be_a_kind_of(Numeric) & (be < Sidekiq::CloudWatchMetrics::Publisher::DEFAULT_INTERVAL)])
         expect(fiber.resume).to eql(:publish)
-        expect(fiber.resume).to eql(:sleep)
+        expect(fiber.resume).to match([:sleep, be_a_kind_of(Numeric) & (be < (Sidekiq::CloudWatchMetrics::Publisher::DEFAULT_INTERVAL * 2))])
 
         publisher.stop
         fiber.resume
         expect(fiber).not_to be_alive
+      end
+
+      context "with a custom interval" do
+        subject(:publisher) { Sidekiq::CloudWatchMetrics::Publisher.new(client: client, interval: 30) }
+
+        it "respects a custom interval" do
+          allow(publisher).to receive(:sleep) { |seconds| Fiber.yield(:sleep, seconds) }
+          allow(publisher).to receive(:publish) { Fiber.yield(:publish) }
+
+          fiber = Fiber.new { publisher.run }
+          expect(fiber.resume).to eql(:publish)
+          expect(fiber.resume).to match([:sleep, be_a_kind_of(Numeric) & (be < 30)])
+
+          publisher.stop
+          fiber.resume
+          expect(fiber).not_to be_alive
+        end
       end
 
       it "survives an error raised during publishing" do
@@ -243,30 +259,6 @@ RSpec.describe Sidekiq::CloudWatchMetrics do
               },
             ),
           )
-        end
-      end
-
-      describe 'Overriding publishing interval' do
-        shared_examples 'a metric publisher' do
-          it "Publishes the correct number of times" do
-            expect(client).to receive(:put_metric_data).exactly(times).times
-            publisher.start
-            sleep(1.2)
-            publisher.stop
-          end
-        end
-
-        context 'Default interval (60 seconds)' do
-          let(:times) { 1 }
-
-          it_behaves_like "a metric publisher"
-        end
-
-        context 'Short interval (1 second)' do
-          let(:times) { 2 }
-          let(:interval) { 1 }
-
-          it_behaves_like "a metric publisher"
         end
       end
 
