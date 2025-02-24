@@ -1,5 +1,7 @@
 require "spec_helper"
 
+require "fiber"
+
 RSpec.describe Sidekiq::CloudWatchMetrics do
   describe ".enable!" do
     # Sidekiq.options is deprecated as of Sidekiq 6.5, and must be accessed
