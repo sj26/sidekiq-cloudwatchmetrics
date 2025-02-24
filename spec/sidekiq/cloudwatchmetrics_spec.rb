@@ -54,6 +54,23 @@ RSpec.describe Sidekiq::CloudWatchMetrics do
 
     subject(:publisher) { Sidekiq::CloudWatchMetrics::Publisher.new(client: client) }
 
+    describe "#run" do
+      it "publishes metrics until stopped" do
+        allow(publisher).to receive(:sleep) { |seconds| Fiber.yield(:sleep) }
+        allow(publisher).to receive(:publish) { Fiber.yield(:publish) }
+
+        fiber = Fiber.new { publisher.run }
+        expect(fiber.resume).to eql(:publish)
+        expect(fiber.resume).to eql(:sleep)
+        expect(fiber.resume).to eql(:publish)
+        expect(fiber.resume).to eql(:sleep)
+
+        publisher.stop
+        fiber.resume
+        expect(fiber).not_to be_alive
+      end
+    end
+
     describe "#publish" do
       let(:stats) do
         instance_double(Sidekiq::Stats,

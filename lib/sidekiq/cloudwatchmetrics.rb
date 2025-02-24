@@ -264,8 +264,10 @@ module Sidekiq::CloudWatchMetrics
     def stop
       logger.debug { "Stopping Sidekiq CloudWatch Metrics Publisher" }
       @stop = true
-      @thread.wakeup
-      @thread.join
+      if @thread
+        @thread.wakeup
+        @thread.join
+      end
     rescue ThreadError
       # Don't raise if thread is already dead.
       nil
