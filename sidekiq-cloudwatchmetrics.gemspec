@@ -1,7 +1,7 @@
 # coding: utf-8
 Gem::Specification.new do |spec|
   spec.name          = "sidekiq-cloudwatchmetrics"
-  spec.version       = "2.7.0"
+  spec.version       = "2.8.0"
   spec.author        = "Samuel Cochran"
   spec.email         = "sj26@sj26.com"
 
@@ -19,7 +19,7 @@ Gem::Specification.new do |spec|
 
   spec.required_ruby_version = ">= 2.7"
 
-  spec.add_runtime_dependency "sidekiq", ">= 5.0", "< 8.0"
+  spec.add_runtime_dependency "sidekiq", ">= 5.0", "<= 8.0"
   spec.add_runtime_dependency "aws-sdk-cloudwatch", "~> 1.6"
 
   spec.add_development_dependency "bundler", "~> 2.2"
