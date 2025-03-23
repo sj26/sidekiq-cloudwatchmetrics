@@ -8,7 +8,7 @@ require "aws-sdk-cloudwatch"
 module Sidekiq::CloudWatchMetrics
   def self.enable!(**kwargs)
     Sidekiq.configure_server do |config|
-      publisher = Publisher.new(**kwargs)
+      publisher = Publisher.new(config: config, **kwargs)
 
       # Sidekiq enterprise has a globally unique leader thread, making it
       # easier to publish the cluster-wide metrics from one place.
