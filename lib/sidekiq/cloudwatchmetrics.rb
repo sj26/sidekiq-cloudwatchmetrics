@@ -8,7 +8,7 @@ require "aws-sdk-cloudwatch"
 module Sidekiq::CloudWatchMetrics
   def self.enable!(**kwargs)
     Sidekiq.configure_server do |config|
-      publisher = Publisher.new(**kwargs)
+      publisher = Publisher.new(config: config, **kwargs)
 
       # Sidekiq enterprise has a globally unique leader thread, making it
       # easier to publish the cluster-wide metrics from one place.
@@ -45,10 +45,20 @@ module Sidekiq::CloudWatchMetrics
 
     DEFAULT_INTERVAL = 60 # seconds
 
-    def initialize(config: Sidekiq, client: Aws::CloudWatch::Client.new, namespace: "Sidekiq", process_metrics: true, additional_dimensions: {}, interval: DEFAULT_INTERVAL)
-      # Sidekiq 6.5+ requires @config, which defaults to the top-level
-      # `Sidekiq` module, but can be overridden when running multiple Sidekiqs.
+    private def default_config
+      # Sidekiq::Config was introduced in sidekiq 7 and has a default
+      if Sidekiq.respond_to?(:default_configuration)
+        Sidekiq.default_configuration
+      else
+        # in older versions, it's just the `Sidekiq` module
+        Sidekiq
+      end
+    end
+
+    def initialize(config: default_config, client: Aws::CloudWatch::Client.new, namespace: "Sidekiq", process_metrics: true, additional_dimensions: {}, interval: DEFAULT_INTERVAL)
+      # Required by Sidekiq::Component (in sidekiq 6.5+)
       @config = config
+
       @client = client
       @interval = interval
       @namespace = namespace
