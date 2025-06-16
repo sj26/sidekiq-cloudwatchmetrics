@@ -60,7 +60,7 @@ module Sidekiq::CloudWatchMetrics
       @config = config
 
       @client = client
-      @interval = interval
+      @interval_s = interval
       @namespace = namespace
       @process_metrics = process_metrics
       @additional_dimensions = additional_dimensions.map { |k, v| {name: k.to_s, value: v.to_s} }
@@ -80,7 +80,7 @@ module Sidekiq::CloudWatchMetrics
     def run
       logger.info { "Started Sidekiq CloudWatch Metrics Publisher" }
 
-      # Publish stats every @interval seconds, sleeping as required between runs
+      # Publish stats every @interval_s seconds, sleeping as required between runs
       now = Time.now.to_f
       tick = now
       until @stop
@@ -93,7 +93,7 @@ module Sidekiq::CloudWatchMetrics
         end
 
         now = Time.now.to_f
-        tick = [tick + @interval, now].max
+        tick = [tick + @interval_s, now].max
         sleep(tick - now) if tick > now
       end
 
@@ -258,6 +258,9 @@ module Sidekiq::CloudWatchMetrics
 
       # We can only put 20 metrics at a time
       metrics.each_slice(20) do |some_metrics|
+        if @interval_s < 60
+          metrics.each { |metric| metric.merge!(storage_resolution: 1) }
+        end
         @client.put_metric_data(
           namespace: @namespace,
           metric_data: some_metrics,
