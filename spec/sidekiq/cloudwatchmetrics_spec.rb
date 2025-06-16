@@ -262,6 +262,94 @@ RSpec.describe Sidekiq::CloudWatchMetrics do
         end
       end
 
+      context "with a custom interval of less than 60" do
+        subject(:publisher) { Sidekiq::CloudWatchMetrics::Publisher.new(client: client, interval: 30) }
+
+        it "passes sets a storage resolution of 1" do
+          Timecop.freeze(now = Time.now) do
+            publisher.publish
+
+            expect(client).to have_received(:put_metric_data).with(
+              namespace: "Sidekiq",
+              metric_data: including(
+                {
+                  metric_name: "ProcessedJobs",
+                  timestamp: now,
+                  value: 123,
+                  unit: "Count",
+                  storage_resolution: 1,
+                },
+                {
+                  metric_name: "FailedJobs",
+                  timestamp: now,
+                  value: 456,
+                  unit: "Count",
+                  storage_resolution: 1,
+                },
+                {
+                  metric_name: "QueueSize",
+                  dimensions: [{name: "QueueName", value: "bar"}],
+                  timestamp: now,
+                  value: 2,
+                  unit: "Count",
+                  storage_resolution: 1,
+                },
+                {
+                  metric_name: "QueueLatency",
+                  dimensions: [{name: "QueueName", value: "bar"}],
+                  timestamp: now,
+                  value: 1.23,
+                  unit: "Seconds",
+                  storage_resolution: 1,
+                },
+              )
+            )
+          end
+        end
+      end
+
+      context "with a custom interval of more than 60" do
+        subject(:publisher) { Sidekiq::CloudWatchMetrics::Publisher.new(client: client, interval: 120) }
+
+        it "doesn't pass a storage resolution" do
+          Timecop.freeze(now = Time.now) do
+            publisher.publish
+
+            expect(client).to have_received(:put_metric_data).with(
+              namespace: "Sidekiq",
+              metric_data: including(
+                {
+                  metric_name: "ProcessedJobs",
+                  timestamp: now,
+                  value: 123,
+                  unit: "Count",
+                },
+                {
+                  metric_name: "FailedJobs",
+                  timestamp: now,
+                  value: 456,
+                  unit: "Count",
+                },
+                {
+                  metric_name: "QueueSize",
+                  dimensions: [{name: "QueueName", value: "bar"}],
+                  timestamp: now,
+                  value: 2,
+                  unit: "Count",
+                },
+                {
+                  metric_name: "QueueLatency",
+                  dimensions: [{name: "QueueName", value: "bar"}],
+                  timestamp: now,
+                  value: 1.23,
+                  unit: "Seconds",
+                },
+              )
+            )
+          end
+        end
+      end
+
       context "with lots of queues" do
         let(:queues) { 10.times.each_with_object({}) { |i, hash| hash["queue#{i}"] = double(size: 1, latency: 1.23) } }
 

@@ -258,6 +258,9 @@ module Sidekiq::CloudWatchMetrics
 
       # We can only put 20 metrics at a time
       metrics.each_slice(20) do |some_metrics|
+        if @interval_s < 60
+          metrics.each { |metric| metric.merge!(storage_resolution: 1) }
+        end
         @client.put_metric_data(
           namespace: @namespace,
           metric_data: some_metrics,
