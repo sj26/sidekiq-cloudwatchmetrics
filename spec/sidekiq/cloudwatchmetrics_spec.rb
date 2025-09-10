@@ -3,6 +3,81 @@ require "spec_helper"
 require "fiber"
 
 RSpec.describe Sidekiq::CloudWatchMetrics do
+  describe "MetricsConfig" do
+    subject(:config) { Sidekiq::CloudWatchMetrics::MetricsConfig.new }
+
+    describe "#initialize" do
+      it "starts with all metrics enabled by default" do
+        expect(config.all_enabled?).to be true
+        expect(config.metric_enabled?(:processed_jobs)).to be true
+        expect(config.metric_enabled?(:any_random_metric)).to be true
+      end
+    end
+
+    describe "#enable_metric" do
+      it "switches to opt-in mode and enables specific metric" do
+        config.enable_metric(:queue_size)
+        expect(config.all_enabled?).to be false
+        expect(config.metric_enabled?(:queue_size)).to be true
+        expect(config.metric_enabled?(:processed_jobs)).to be false
+      end
+
+      it "accepts string or symbol" do
+        config.enable_metric("queue_size")
+        expect(config.metric_enabled?(:queue_size)).to be true
+      end
+    end
+
+    describe "#enable_metrics" do
+      it "enables multiple metrics at once" do
+        config.enable_metrics(:queue_size, :queue_latency, :utilization)
+        expect(config.metric_enabled?(:queue_size)).to be true
+        expect(config.metric_enabled?(:queue_latency)).to be true
+        expect(config.metric_enabled?(:utilization)).to be true
+        expect(config.metric_enabled?(:processed_jobs)).to be false
+      end
+    end
+
+    describe "#to_s" do
+      it "shows default message when all enabled" do
+        expect(config.to_s).to eq("All metrics enabled (default)")
+      end
+
+      it "shows enabled metrics when in opt-in mode" do
+        config.enable_metrics(:capacity, :queue_size, :utilization)
+        expect(config.to_s).to eq("Enabled metrics: capacity, queue_size, utilization")
+      end
+    end
+  end
+
+  describe ".configure" do
+    before { Sidekiq::CloudWatchMetrics.metrics_config = nil }
+
+    it "yields a MetricsConfig instance" do
+      Sidekiq::CloudWatchMetrics.configure do |config|
+        expect(config).to be_a(Sidekiq::CloudWatchMetrics::MetricsConfig)
+      end
+    end
+
+    it "saves the configuration" do
+      Sidekiq::CloudWatchMetrics.configure do |config|
+        config.enable_metric(:queue_size)
+      end
+
+      expect(Sidekiq::CloudWatchMetrics.metrics_config.metric_enabled?(:queue_size)).to be true
+      expect(Sidekiq::CloudWatchMetrics.metrics_config.metric_enabled?(:processed_jobs)).to be false
+    end
+
+    it "returns the configuration" do
+      result = Sidekiq::CloudWatchMetrics.configure do |config|
+        config.enable_metric(:queue_size)
+      end
+
+      expect(result).to be_a(Sidekiq::CloudWatchMetrics::MetricsConfig)
+      expect(result.metric_enabled?(:queue_size)).to be true
+    end
+  end
+
   describe ".enable!" do
     # Sidekiq.options is deprecated as of Sidekiq 6.5, and must be accessed
     # through Sidekiq[...] instead. In Sidekiq 7.0 we must use Sidekiq::Config.new
@@ -55,6 +130,12 @@ RSpec.describe Sidekiq::CloudWatchMetrics do
     before { allow(client).to receive(:put_metric_data) }
 
     subject(:publisher) { Sidekiq::CloudWatchMetrics::Publisher.new(client: client) }
+
+    let(:custom_config) do
+      config = Sidekiq::CloudWatchMetrics::MetricsConfig.new
+      config.enable_metrics(:queue_size, :queue_latency, :utilization)
+      config
+    end
 
     describe "#run" do
       it "publishes metrics until stopped" do
@@ -453,6 +534,117 @@ RSpec.describe Sidekiq::CloudWatchMetrics do
                 expect(metric[:dimensions]).to include({name: "appCluster", value: "1"}, {name: "type", value: "foo"})
               end
             }.at_least(:once)
+          end
+        end
+      end
+
+      context "with custom metrics configuration" do
+        subject(:publisher) { Sidekiq::CloudWatchMetrics::Publisher.new(client: client, metrics_config: custom_config) }
+
+        it "only publishes enabled metrics" do
+          Timecop.freeze(now = Time.now) do
+            publisher.publish
+
+            expect(client).to have_received(:put_metric_data) do |args|
+              metric_names = args[:metric_data].map { |m| m[:metric_name] }.uniq
+              
+              # Should include enabled metrics
+              expect(metric_names).to include("QueueSize")
+              expect(metric_names).to include("QueueLatency")
+              expect(metric_names).to include("Utilization")
+              
+              # Should NOT include disabled metrics
+              expect(metric_names).not_to include("ProcessedJobs")
+              expect(metric_names).not_to include("FailedJobs")
+              expect(metric_names).not_to include("EnqueuedJobs")
+              expect(metric_names).not_to include("Workers")
+              expect(metric_names).not_to include("Processes")
+            end
+          end
+        end
+
+        it "logs the configuration on startup" do
+          allow(publisher).to receive(:sleep) { |seconds| Fiber.yield(:sleep, seconds) }
+          allow(publisher).to receive(:publish) { Fiber.yield(:publish) }
+          
+          logger = double("logger")
+          allow(publisher).to receive(:logger).and_return(logger)
+          expect(logger).to receive(:info).twice
+          expect(logger).to receive(:debug).at_least(:once)
+          
+          fiber = Fiber.new { publisher.run }
+          expect(fiber.resume).to eql(:publish)
+          
+          publisher.stop
+          fiber.resume rescue nil
+        end
+      end
+
+      context "with queue metrics enabled" do
+        let(:queue_config) do
+          config = Sidekiq::CloudWatchMetrics::MetricsConfig.new
+          config.enable_metrics(:queue_size, :queue_latency)
+          config
+        end
+        
+        subject(:publisher) { Sidekiq::CloudWatchMetrics::Publisher.new(client: client, metrics_config: queue_config) }
+
+        it "publishes both queue size and latency metrics" do
+          Timecop.freeze(now = Time.now) do
+            publisher.publish
+
+            expect(client).to have_received(:put_metric_data).with(
+              namespace: "Sidekiq",
+              metric_data: contain_exactly(
+                {
+                  metric_name: "QueueSize",
+                  dimensions: [{name: "QueueName", value: "foo"}],
+                  timestamp: now,
+                  value: 1,
+                  unit: "Count",
+                },
+                {
+                  metric_name: "QueueLatency",
+                  dimensions: [{name: "QueueName", value: "foo"}],
+                  timestamp: now,
+                  value: 1.23,
+                  unit: "Seconds",
+                },
+                {
+                  metric_name: "QueueSize",
+                  dimensions: [{name: "QueueName", value: "bar"}],
+                  timestamp: now,
+                  value: 2,
+                  unit: "Count",
+                },
+                {
+                  metric_name: "QueueLatency",
+                  dimensions: [{name: "QueueName", value: "bar"}],
+                  timestamp: now,
+                  value: 1.23,
+                  unit: "Seconds",
+                },
+              ),
+            )
+          end
+        end
+      end
+
+      context "with no configuration (backward compatibility)" do
+        it "publishes all metrics by default" do
+          Timecop.freeze(now = Time.now) do
+            publisher.publish
+
+            expect(client).to have_received(:put_metric_data) do |args|
+              metric_names = args[:metric_data].map { |m| m[:metric_name] }.uniq
+              
+              # Should include all metrics
+              expect(metric_names).to include("ProcessedJobs")
+              expect(metric_names).to include("FailedJobs")
+              expect(metric_names).to include("QueueSize")
+              expect(metric_names).to include("QueueLatency")
+              expect(metric_names).to include("Utilization")
+            end
           end
         end
       end
