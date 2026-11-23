@@ -36,6 +36,13 @@ RSpec.describe Sidekiq::CloudWatchMetrics do
         expect(config.metric_enabled?(:utilization)).to be true
         expect(config.metric_enabled?(:processed_jobs)).to be false
       end
+
+      it "rejects unknown metrics without changing the selection" do
+        expect { config.enable_metrics(:queue_size, "queue_szie") }
+          .to raise_error(ArgumentError, /queue_szie/)
+
+        expect(config.metric_enabled?(:processed_jobs)).to be true
+      end
     end
 
     describe "#to_s" do

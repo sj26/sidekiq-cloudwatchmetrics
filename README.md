@@ -56,6 +56,8 @@ Sidekiq::CloudWatchMetrics.enable!(
 
 #### Available Metrics
 
+Unknown metric keys raise `ArgumentError` when you configure them.
+
 | Metric Key | CloudWatch Metric Name | Description |
 |------------|----------------------|-------------|
 | `:processed_jobs` | ProcessedJobs | Total number of processed jobs |

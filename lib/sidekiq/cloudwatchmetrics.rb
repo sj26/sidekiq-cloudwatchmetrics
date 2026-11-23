@@ -7,6 +7,12 @@ require "aws-sdk-cloudwatch"
 
 module Sidekiq::CloudWatchMetrics
   class MetricsConfig
+    METRIC_KEYS = %i[
+      processed_jobs failed_jobs enqueued_jobs scheduled_jobs retry_jobs dead_jobs
+      workers processes default_queue_latency capacity utilization queue_size queue_latency
+    ].freeze
+    private_constant :METRIC_KEYS
+
     attr_reader :enabled_metrics
 
     def initialize
@@ -15,12 +21,16 @@ module Sidekiq::CloudWatchMetrics
     end
 
     def enable_metric(metric)
-      @all_enabled = false if @all_enabled
-      @enabled_metrics.add(metric.to_sym)
+      enable_metrics(metric)
     end
 
     def enable_metrics(*metrics)
-      metrics.each { |m| enable_metric(m) }
+      keys = metrics.map(&:to_sym)
+      unknown = keys - METRIC_KEYS
+      raise ArgumentError, "Unknown metric keys: #{unknown.join(', ')}" unless unknown.empty?
+
+      @all_enabled = false unless keys.empty?
+      @enabled_metrics.merge(keys)
     end
 
     def metric_enabled?(metric)
