@@ -175,7 +175,19 @@ Sidekiq::CloudWatchMetrics.enable!(interval: 30)
 
 After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake spec` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
 
-To install this gem onto your local machine, run `bundle exec rake install`. To release a new version, update the version number in `version.rb`, and then run `bundle exec rake release`, which will create a git tag for the version, push git commits and tags, and push the `.gem` file to [rubygems.org](https://rubygems.org).
+To install this gem onto your local machine, run `bundle exec rake install`.
+
+### Releasing
+
+Bump the version in `sidekiq-cloudwatchmetrics.gemspec` and land the change on `main`.
+After CI passes, run [Release gem](https://github.com/sj26/sidekiq-cloudwatchmetrics/actions/workflows/release.yml) on `main`.
+The workflow creates the `v<version>` tag, publishes to RubyGems, then creates a GitHub release with generated notes.
+
+The workflow uses [RubyGems Trusted Publishing](https://guides.rubygems.org/trusted-publishing/).
+Register `sj26/sidekiq-cloudwatchmetrics` with workflow filename `release.yml` and environment `release` on RubyGems.
+Restrict the matching GitHub environment to the `main` branch. No RubyGems API key is needed.
+
+If the gem is on RubyGems but the GitHub release step fails, create the GitHub release from the existing tag instead of publishing the gem again.
 
 ## Contributing
 

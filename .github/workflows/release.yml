@@ -1,0 +1,48 @@
+name: Release gem
+
+on: workflow_dispatch
+
+permissions: {}
+
+concurrency: release
+
+jobs:
+  release:
+    if: github.repository == 'sj26/sidekiq-cloudwatchmetrics' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: write
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: ruby/setup-ruby@be3c7df29b3349ec6bcfc6b4792f1cf9f5237d18 # v1.343.0
+        with:
+          ruby-version: '3.3'
+          bundler-cache: true
+
+      - run: bundle exec rake spec
+
+      - name: Verify release tag
+        id: version
+        run: |
+          tag="v$(ruby -e 'puts Gem::Specification.load("sidekiq-cloudwatchmetrics.gemspec").version')"
+          if git rev-parse --verify --quiet "refs/tags/$tag" >/dev/null &&
+             [[ "$(git rev-list -n 1 "refs/tags/$tag")" != "$GITHUB_SHA" ]]; then
+            echo "::error::$tag already points to a different commit. Bump the gem version before releasing."
+            exit 1
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+      - uses: rubygems/release-gem@2654a0fe0dc39725c07fe84d7fe863a084f2424e # v1.5.0
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: gh release create "$TAG" --verify-tag --title "$TAG" --generate-notes
