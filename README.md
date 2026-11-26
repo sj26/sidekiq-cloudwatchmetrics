@@ -121,6 +121,29 @@ end
 Sidekiq::CloudWatchMetrics.enable!(namespace: "Sidekiq-Production")
 ```
 
+#### Custom Metrics
+
+You can register custom metrics to publish alongside the built-in ones. The block is called on every publish with the timestamp, the `Sidekiq::Stats` and the processes the built-in metrics were collected from, and should return an array of [metric data][metricdata]. Custom metrics also get any `additional_dimensions`:
+
+```ruby
+Sidekiq::CloudWatchMetrics.configure do |config|
+  # Publish the memory usage of each Sidekiq process
+  config.register_custom_metrics do |timestamp, _stats, processes|
+    processes.map do |process|
+      {
+        metric_name: "Memory",
+        dimensions: [{name: "Hostname", value: process["hostname"]}],
+        timestamp: timestamp,
+        value: process["rss"],
+        unit: "Kilobytes",
+      }
+    end
+  end
+end
+```
+
+  [metricdata]: https://docs.aws.amazon.com/sdk-for-ruby/v3/api/Aws/CloudWatch/Types/MetricDatum.html
+
 #### Backward Compatibility
 
 If you don't configure any metrics explicitly, ALL metrics will be published (default behavior). This ensures existing installations continue to work without any changes:
@@ -169,6 +192,12 @@ Metrics are published every 60 seconds by default. You can adjust this with the 
 
 ```ruby
 Sidekiq::CloudWatchMetrics.enable!(interval: 30)
+```
+
+Additional dimensions can be added to every published metric with the `additional_dimensions` option:
+
+```ruby
+Sidekiq::CloudWatchMetrics.enable!(additional_dimensions: {"Environment" => "staging"})
 ```
 
 ## Development
