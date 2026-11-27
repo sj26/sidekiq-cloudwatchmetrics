@@ -13,11 +13,12 @@ module Sidekiq::CloudWatchMetrics
     ].freeze
     private_constant :METRIC_KEYS
 
-    attr_reader :enabled_metrics
+    attr_reader :enabled_metrics, :custom_metrics
 
     def initialize
       @enabled_metrics = Set.new
       @all_enabled = true  # backward compatibility - all metrics enabled by default
+      @custom_metrics = []
     end
 
     def enable_metric(metric)
@@ -31,6 +32,12 @@ module Sidekiq::CloudWatchMetrics
 
       @all_enabled = false unless keys.empty?
       @enabled_metrics.merge(keys)
+    end
+
+    def register_custom_metrics(&block)
+      raise ArgumentError, "A block is required" unless block
+
+      @custom_metrics << block
     end
 
     def metric_enabled?(metric)
@@ -354,6 +361,12 @@ module Sidekiq::CloudWatchMetrics
             }
           end
         end
+      end
+
+      @metrics_config.custom_metrics.each do |block|
+        custom_metrics = block.call(now, stats, processes, queues)
+
+        metrics.concat(custom_metrics)
       end
 
       unless @additional_dimensions.empty?

@@ -45,6 +45,20 @@ RSpec.describe Sidekiq::CloudWatchMetrics do
       end
     end
 
+    describe "#register_custom_metrics" do
+      it "registers custom metrics without changing the enabled metrics" do
+        block = proc { [] }
+        config.register_custom_metrics(&block)
+
+        expect(config.custom_metrics).to eq([block])
+        expect(config.all_enabled?).to be true
+      end
+
+      it "requires a block" do
+        expect { config.register_custom_metrics }.to raise_error(ArgumentError)
+      end
+    end
+
     describe "#to_s" do
       it "shows default message when all enabled" do
         expect(config.to_s).to eq("All metrics enabled (default)")
@@ -542,6 +556,68 @@ RSpec.describe Sidekiq::CloudWatchMetrics do
               end
             }.at_least(:once)
           end
+        end
+      end
+
+      context "with custom metrics" do
+        let(:metrics_config) do
+          config = Sidekiq::CloudWatchMetrics::MetricsConfig.new
+          config.register_custom_metrics do |timestamp, stats, processes, queues|
+            [
+              {
+                metric_name: "Custom",
+                dimensions: [{name: "Foo", value: "bar"}],
+                timestamp: timestamp,
+                value: stats.processed + processes.size + queues.values.sum,
+                unit: "Count",
+              },
+            ]
+          end
+          config.register_custom_metrics do |timestamp|
+            [
+              {
+                metric_name: "TimestampOnly",
+                timestamp: timestamp,
+                value: 1,
+                unit: "Count",
+              },
+            ]
+          end
+          config
+        end
+
+        subject(:publisher) { Sidekiq::CloudWatchMetrics::Publisher.new(client: client, metrics_config: metrics_config, additional_dimensions: {appCluster: 1}) }
+
+        it "publishes the custom metrics with the additional dimensions" do
+          Timecop.freeze(now = Time.now) do
+            publisher.publish
+
+            expect(client).to have_received(:put_metric_data).with(
+              namespace: "Sidekiq",
+              metric_data: include(
+                {
+                  metric_name: "Custom",
+                  dimensions: [{name: "Foo", value: "bar"}, {name: "appCluster", value: "1"}],
+                  timestamp: now,
+                  value: 128,
+                  unit: "Count",
+                },
+                {
+                  metric_name: "TimestampOnly",
+                  dimensions: [{name: "appCluster", value: "1"}],
+                  timestamp: now,
+                  value: 1,
+                  unit: "Count",
+                },
+              ),
+            )
+          end
+        end
+
+        it "fetches the queues only once" do
+          publisher.publish
+
+          expect(stats).to have_received(:queues).once
         end
       end
 
