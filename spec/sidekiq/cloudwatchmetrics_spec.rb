@@ -562,13 +562,13 @@ RSpec.describe Sidekiq::CloudWatchMetrics do
       context "with custom metrics" do
         let(:metrics_config) do
           config = Sidekiq::CloudWatchMetrics::MetricsConfig.new
-          config.register_custom_metrics do |timestamp, stats, processes|
+          config.register_custom_metrics do |timestamp, stats, processes, queues|
             [
               {
                 metric_name: "Custom",
                 dimensions: [{name: "Foo", value: "bar"}],
                 timestamp: timestamp,
-                value: stats.processed + processes.size,
+                value: stats.processed + processes.size + queues.values.sum,
                 unit: "Count",
               },
             ]
@@ -599,7 +599,7 @@ RSpec.describe Sidekiq::CloudWatchMetrics do
                   metric_name: "Custom",
                   dimensions: [{name: "Foo", value: "bar"}, {name: "appCluster", value: "1"}],
                   timestamp: now,
-                  value: 125,
+                  value: 128,
                   unit: "Count",
                 },
                 {
@@ -612,6 +612,12 @@ RSpec.describe Sidekiq::CloudWatchMetrics do
               ),
             )
           end
+        end
+
+        it "fetches the queues only once" do
+          publisher.publish
+
+          expect(stats).to have_received(:queues).once
         end
       end
 

@@ -364,7 +364,7 @@ module Sidekiq::CloudWatchMetrics
       end
 
       @metrics_config.custom_metrics.each do |block|
-        custom_metrics = block.call(now, stats, processes)
+        custom_metrics = block.call(now, stats, processes, queues)
 
         metrics.concat(custom_metrics)
       end

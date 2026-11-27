@@ -123,12 +123,12 @@ Sidekiq::CloudWatchMetrics.enable!(namespace: "Sidekiq-Production")
 
 #### Custom Metrics
 
-You can register custom metrics to publish alongside the built-in ones. The block is called on every publish with the timestamp, the `Sidekiq::Stats` and the processes the built-in metrics were collected from, and should return an array of [metric data][metricdata]. Custom metrics also get any `additional_dimensions`:
+You can register custom metrics to publish alongside the built-in ones. The block is called on every publish with the timestamp, the `Sidekiq::Stats`, and the processes and queue sizes (a hash of queue name to size) the built-in metrics were collected from, and should return an array of [metric data][metricdata]. Custom metrics also get any `additional_dimensions`:
 
 ```ruby
 Sidekiq::CloudWatchMetrics.configure do |config|
   # Publish the memory usage of each Sidekiq process
-  config.register_custom_metrics do |timestamp, _stats, processes|
+  config.register_custom_metrics do |timestamp, _stats, processes, _queues|
     processes.map do |process|
       {
         metric_name: "Memory",
